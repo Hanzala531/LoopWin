@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { type } from "os";
-
 
 const userSchema = new mongoose.Schema({
   name : {
@@ -52,16 +50,16 @@ const userSchema = new mongoose.Schema({
   
   // Method for generating access token
   userSchema.methods.generateAccessToken = function () {
-    return jwt.sign(
-      {
-        _id: this._id,
-      _username: this.username, // Corrected line
-      _email: this.email,
-      _fullname: this.fullname, // Make sure fullname is defined in schema
+  return jwt.sign(
+    {
+      _id: this._id,
+      name: this.name,
+      phone: this.phone,
+      status: this.status,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-      expiresIn: `${process.env.ACCESS_TOKEN_EXPIRY}`,
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     }
   );
 };

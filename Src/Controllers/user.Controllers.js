@@ -80,7 +80,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // Checking if the email already exists
     const existingEmail = await User.findOne({ phone: phone });
     if (existingEmail) {
-      return res.json(new ApiResponse(400, "Email is already registered", false));
+      return res.json(new ApiResponse(400, "User with this phone number already exists", false));
     }
 
     // Creating the user

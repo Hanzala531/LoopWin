@@ -49,4 +49,8 @@ app.get("/", (req, res) => {
 import userRouter from "./Routes/user.Routes.js";
 app.use("/api/v1/users", userRouter);
 
+// creating products api
+import productRouter from "./Routes/products,Routes.js";
+app.use("/api/v1/products" , productRouter)
+
 export { app };
