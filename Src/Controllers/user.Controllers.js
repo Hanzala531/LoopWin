@@ -1,4 +1,4 @@
-import { asyncHandler } from "../../../../Learning/React/Organised-Repos/Car Showroom/Backend/Src/Utilities/asyncHandler.js";
+import { asyncHandler } from "../Utilities/asyncHandler.js";
 import { User } from "../Models/user.Models.js";
 import { ApiError } from "../Utilities/ApiError.js";
 import { ApiResponse } from "../Utilities/ApiResponse.js";
