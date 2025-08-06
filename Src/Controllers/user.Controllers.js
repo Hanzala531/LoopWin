@@ -1,0 +1,214 @@
+import { asyncHandler } from "../../../../Learning/React/Organised-Repos/Car Showroom/Backend/Src/Utilities/asyncHandler.js";
+import { User } from "../Models/user.Models.js";
+import { ApiError } from "../Utilities/ApiError.js";
+import { ApiResponse } from "../Utilities/ApiResponse.js";
+
+// Access and Refresh Tokens
+const generateAccessAndRefreshTokens = async (userid) => {
+  try {
+    const user = await User.findById(userid);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // Call the methods on the user instance
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.error("Error generating tokens:", error); // Log the error
+    throw new ApiError(500, "Something went wrong while generating tokens");
+  }
+};
+
+// Get all users for admin
+const getAllUsers = asyncHandler (async (req , res ) =>{
+    try {
+    const users = await User.find({}).select("-password -refreshToken");
+    if (!users) {
+      return res.json(new ApiResponse(404, "No users found", false));
+    }
+
+    return res.json(new ApiResponse(200, users, "Users fetched successfully"));        
+    } catch (error) {
+    console.log("Error in registering the user:", error);
+    throw new ApiError(500, "Something went wrong while registering the user");
+    }
+});
+
+// Get user by id
+const getUserById = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select("-password -refreshToken");
+    if (!user) {
+      return res.json(new ApiResponse(404, "User not found", false));
+    }
+
+    return res.json(new ApiResponse(200, user, "User fetched successfully"));
+  } catch (error) {
+    console.log("Error fetching user:", error); // Log the error
+    throw new ApiError(500, "Something went wrong while fetching user");
+  }
+});
+
+// Register User Controller
+const registerUser = asyncHandler(async (req, res) => {
+  try {
+    const { name, phone, password } = req.body;
+    if (!name || !phone || !password) {
+      return res.json(new ApiResponse(400, "Please provide all required fields", false));
+    }
+
+    const phoneRegex = /^[0-9]{11}$/;
+
+    if (!phoneRegex.test(phone)) {
+      return res.json(
+        new ApiResponse(
+          400,
+          "Please provide a valid 11-digit phone number",
+          false
+        )
+      );
+    }
+
+
+    // Checking if the email already exists
+    const existingEmail = await User.findOne({ phone: phone });
+    if (existingEmail) {
+      return res.json(new ApiResponse(400, "Email is already registered", false));
+    }
+
+    // Creating the user
+    const user = await User.create({
+      name,
+      phone,
+      password,
+    });
+
+    // checking if the user is created and selecting the required fields
+    const createdUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
+
+    if (!createdUser) {
+      return res.json(new ApiResponse(500, "User not created due to some error", false));
+    }
+
+    // Generating the response
+    return res
+      .status(201)
+      .json(new ApiResponse(201, "User registered successfully", createdUser));
+  } catch (error) {
+    console.log("Error in registering the user:", error);
+    throw new ApiError(500, "Something went wrong while registering the user");
+  }
+});
+
+// Login User Controller
+const loginUser = asyncHandler (async( req , res ) => {
+  try {
+    // Destructuring the request body
+    const {  phone , password } = req.body;
+
+    // checking if the required fields are provided
+    if (!phone || !password) {
+      return res.json(new ApiResponse(400, "Please provide all required fields", false));
+    }
+
+    // checking if the user exists
+    const user = await User.findOne({ phone: phone } );
+    if (!user) {
+      return res.json(new ApiResponse(400, "User does not exist", false));
+    }
+
+    // checking if the entered password is correct
+    const isPasswordValid = await user.isPasswordCorrect(
+      password,
+      user.password
+    );
+    if (!isPasswordValid) {
+      return res.json(new ApiResponse(400, "Invalid password", false));
+    }
+
+    // Generating the access and refresh tokens
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    // selecting the fileds not to be sent in the response
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
+
+    // setting options for the cookie
+    const options = {
+      httpOnly: true,
+      secure : true,
+    };
+
+    return res.status(200)
+    .cookie ("refreshToken", refreshToken, options)
+    .cookie ("accessToken", accessToken, options)
+    .json(
+      new ApiResponse(200, "User logged in successfully", {
+        user: loggedInUser,
+        accessToken,
+        refreshToken,
+      })
+    );
+
+  } catch (error) {
+    console.log("Error in login user:", error);
+    throw new ApiError(500, "Something went wrong while logging in the user");
+  }
+});
+
+
+// Logout User Controller
+const logoutUser =  asyncHandler ( async (req , res ) => {
+  try {
+   await User.findByIdAndUpdate(
+          req.user._id,
+          {
+              $unset: {
+                  refreshToken: 1 // this removes the field from document
+              }
+          },
+          {
+              new: true
+          }
+      )
+    // Clearing the cookies
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+    });
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: true,
+    });
+    return res.status(200).json(
+      new ApiResponse(200, "User logged out successfully")
+    );
+
+  } catch (error) {
+    console.log("Error in logout user:", error);
+    throw new ApiError(500, "Something went wrong while logging out the user");
+    
+  }
+
+  });
+
+
+  export {
+    getAllUsers,
+    getUserById,
+    registerUser,
+    loginUser,
+    logoutUser
+  }
