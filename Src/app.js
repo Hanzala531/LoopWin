@@ -36,14 +36,35 @@ app.use(express.static("Public"));
 
 app.use(cookieparser());
 
-// Health check endpoint for Vercel
-app.get("/", (req, res) => {
-  res.json({ 
-    message: "LoopWin API is running on Vercel!", 
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV 
+// Health check route for debugging
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: "Ice Cream Management API is running successfully!",
+    success: true,
+    data: {
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      version: '1.0.0',
+      availableEndpoints: [
+        '/api/v1/users',
+        '/api/v1/products',
+      ]
+    }
   });
 });
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    message: "Server is healthy",
+    success: true,
+    data: {
+      status: 'OK',
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
+
 
 // creating user api
 import userRouter from "./Routes/user.Routes.js";
