@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node Src/server.js",
-    "dev": "nodemon Src/server.js",
+    "dev": "nodemon nodemon -r dotenv/config --experimental-json-modules ./Src/server.js",
     "build": "echo 'Build complete'",
     "vercel-build": "echo 'Vercel build complete'"
   },

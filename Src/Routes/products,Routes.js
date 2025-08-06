@@ -27,7 +27,7 @@ productRouter.get("/:id", requestLogger, getProductById);
 // Protected routes (authentication required)
 
 // Create new product (authenticated users only)
-productRouter.post("/", 
+productRouter.post("/add", 
     requestLogger, 
     verifyJWT, 
     verifyAdmin,
