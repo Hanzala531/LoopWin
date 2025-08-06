@@ -64,13 +64,23 @@ const registerUser = asyncHandler(async (req, res) => {
       return res.json(new ApiResponse(400, "Please provide all required fields", false));
     }
 
+   const phoneRegex = /^\+?[0-9]{11,15}$/;
 
+    if (!phoneRegex.test(phone)) {
+      return res.json(
+        new ApiResponse(
+          400,
+          "Please provide a valid phone number",
+          false
+        )
+      );
+    }
 
 
     // Checking if the email already exists
     const existingEmail = await User.findOne({ phone: phone });
     if (existingEmail) {
-      return res.json(new ApiResponse(400, "Phone Number is already registered", false));
+      return res.json(new ApiResponse(400, "Email is already registered", false));
     }
 
     // Creating the user
@@ -108,6 +118,18 @@ const loginUser = asyncHandler (async( req , res ) => {
     // checking if the required fields are provided
     if (!phone || !password) {
       return res.json(new ApiResponse(400, "Please provide all required fields", false));
+    }
+
+    const phoneRegex = /^\+?[0-9]{11,15}$/;
+
+    if (!phoneRegex.test(phone)) {
+      return res.json(
+        new ApiResponse(
+          400,
+          "Please provide a valid phone number",
+          false
+        )
+      );
     }
 
     // checking if the user exists
