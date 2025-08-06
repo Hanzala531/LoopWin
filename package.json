@@ -2,7 +2,7 @@
   "name": "loopwin",
   "version": "1.0.0",
   "description": "This is a project whose backend is assigned to me by Hamza",
-  "main": "server.js",
+  "main": "api/index.js",
   "type": "module",
   "scripts": {
     "start": "node Src/server.js",
