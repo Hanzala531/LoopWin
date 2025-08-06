@@ -25,8 +25,6 @@ productRouter.get("/search", requestLogger, searchProducts);
 productRouter.get("/:id", requestLogger, getProductById);
 
 // Protected routes (authentication required)
-// Get current user's products
-productRouter.get("/my/products", requestLogger, verifyJWT, getMyProducts);
 
 // Create new product (authenticated users only)
 productRouter.post("/", 
