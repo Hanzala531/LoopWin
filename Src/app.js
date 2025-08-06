@@ -39,7 +39,7 @@ app.use(cookieparser());
 // Health check route for debugging
 app.get('/', (req, res) => {
   res.status(200).json({
-    message: "Loop Win API is running successfully!",
+    message: "Loop Win API is successfully running!",
     success: true,
     data: {
       timestamp: new Date().toISOString(),
