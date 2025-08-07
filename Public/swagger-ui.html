@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LoopWin API Documentation</title>
-  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" crossorigin="anonymous" />
   <style>
     html {
       box-sizing: border-box;
@@ -15,41 +15,90 @@
       box-sizing: inherit;
     }
     body {
-      margin:0;
+      margin: 0;
       background: #fafafa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     .swagger-ui .topbar {
-      display: none;
+      display: none !important;
+    }
+    .swagger-ui .scheme-container {
+      background: #fff;
+      box-shadow: 0 1px 2px 0 rgba(0,0,0,.15);
+    }
+    #swagger-ui {
+      max-width: 1200px;
+      margin: 0 auto;
     }
   </style>
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
-  <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
+  
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
+  
   <script>
     window.onload = function() {
-      // Begin Swagger UI call region
-      const ui = SwaggerUIBundle({
-        url: window.location.origin + '/swagger.yaml',
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        presets: [
-          SwaggerUIBundle.presets.apis,
-          SwaggerUIStandalonePreset
-        ],
-        plugins: [
-          SwaggerUIBundle.plugins.DownloadUrl
-        ],
-        layout: "StandaloneLayout",
-        persistAuthorization: true,
-        tryItOutEnabled: true,
-        requestInterceptor: function(request) {
-          // Add any custom headers here if needed
-          return request;
+      try {
+        // Ensure SwaggerUIBundle is loaded
+        if (typeof SwaggerUIBundle === 'undefined') {
+          console.error('SwaggerUIBundle is not loaded');
+          document.getElementById('swagger-ui').innerHTML = '<h2>Error: Swagger UI failed to load</h2><p>Please refresh the page.</p>';
+          return;
         }
-      });
-      // End Swagger UI call region
+
+        // Initialize Swagger UI
+        const ui = SwaggerUIBundle({
+          url: window.location.protocol + '//' + window.location.host + '/swagger.yaml',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIStandalonePreset
+          ],
+          plugins: [
+            SwaggerUIBundle.plugins.DownloadUrl
+          ],
+          layout: "StandaloneLayout",
+          persistAuthorization: true,
+          tryItOutEnabled: true,
+          supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+          validatorUrl: null,
+          docExpansion: 'list',
+          operationsSorter: 'alpha',
+          tagsSorter: 'alpha',
+          filter: true,
+          requestInterceptor: function(request) {
+            // Add any custom headers if needed
+            console.log('API Request:', request.method, request.url);
+            return request;
+          },
+          responseInterceptor: function(response) {
+            console.log('API Response:', response.status, response.url);
+            return response;
+          },
+          onComplete: function() {
+            console.log('Swagger UI loaded successfully');
+          },
+          onFailure: function(error) {
+            console.error('Swagger UI failed to load:', error);
+          }
+        });
+
+        // Handle any initialization errors
+        window.ui = ui;
+        
+      } catch (error) {
+        console.error('Error initializing Swagger UI:', error);
+        document.getElementById('swagger-ui').innerHTML = '<h2>Error loading API documentation</h2><p>' + error.message + '</p>';
+      }
+    };
+
+    // Fallback error handling
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      console.error('JavaScript error:', msg, 'at', url, ':', lineNo);
+      return false;
     };
   </script>
 </body>
