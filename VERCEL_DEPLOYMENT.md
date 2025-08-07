@@ -35,6 +35,9 @@ vercel --prod
 Once deployed, your API will be available at:
 - Base URL: `https://your-app-name.vercel.app`
 - Health Check: `GET /`
+- Health Status: `GET /health`
+- **API Documentation: `GET /api-docs`** 🚀
+- **API Docs (Alternative): `GET /docs`** 🚀
 - User Registration: `POST /api/v1/users/register`
 - User Login: `POST /api/v1/users/login`
 - User Logout: `POST /api/v1/users/logout`
