@@ -3,55 +3,12 @@
   "builds": [
     {
       "src": "api/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/favicon.ico",
-      "dest": "/Public/favicon.ico"
-    },
-    {
-      "src": "/swagger.yaml",
-      "headers": {
-        "Content-Type": "text/yaml; charset=utf-8",
-        "Access-Control-Allow-Origin": "*",
-        "Cache-Control": "public, max-age=300"
-      },
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/api-docs",
-      "headers": {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "X-Content-Type-Options": "nosniff"
-      },
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/docs",
-      "headers": {
-        "Location": "/api-docs"
-      },
-      "status": 301
-    },
-    {
-      "src": "/health",
-      "headers": {
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/test-swagger",
-      "dest": "api/index.js"
-    },
-    {
-      "src": "/api/v1/(.*)",
+      "src": "/api/(.*)",
       "dest": "api/index.js"
     },
     {
@@ -59,11 +16,6 @@
       "dest": "api/index.js"
     }
   ],
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   }

@@ -1,6 +1,7 @@
 import express, { urlencoded } from "express";
 import cors from "cors";
 import cookieparser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -65,176 +66,34 @@ app.get('/', (req, res) => {
 });
 
 
-// Enhanced health check route
 app.get('/health', (req, res) => {
-  const healthData = {
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    swagger: {
-      specLoaded: !!swaggerDocument,
-      totalEndpoints: swaggerDocument ? Object.keys(swaggerDocument.paths).length : 0,
-      version: swaggerDocument?.info?.version || 'unknown'
-    },
-    environment: process.env.NODE_ENV || 'development'
-  };
-
   res.status(200).json({
     message: "Server is healthy",
     success: true,
-    data: healthData
+    data: {
+      status: 'OK',
+      timestamp: new Date().toISOString()
+    }
   });
 });
 
-// Load Swagger YAML file with validation
+// Load Swagger YAML file
 const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
 
-// Validate Swagger specification on startup
-console.log('🔍 Validating Swagger specification...');
-try {
-  // Basic validation
-  if (!swaggerDocument.openapi || !swaggerDocument.info || !swaggerDocument.paths) {
-    console.error('❌ Invalid Swagger specification: Missing required fields');
-  } else {
-    console.log('✅ Swagger specification is valid');
-    console.log(`📋 API Version: ${swaggerDocument.info.version}`);
-    console.log(`📝 Total endpoints: ${Object.keys(swaggerDocument.paths).length}`);
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "LoopWin API Documentation",
+  customfavIcon: "/favicon.ico",
+  swaggerOptions: {
+    persistAuthorization: true,
   }
-} catch (error) {
-  console.error('❌ Swagger validation error:', error.message);
-}
-
-// Serve swagger.yaml with comprehensive error handling
-app.get('/swagger.yaml', (req, res) => {
-  try {
-    if (!swaggerDocument) {
-      return res.status(500).json({
-        error: 'Swagger specification not loaded',
-        message: 'The API specification failed to load during startup'
-      });
-    }
-
-    res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
-    
-    const yamlString = YAML.stringify(swaggerDocument, 4);
-    res.send(yamlString);
-    
-  } catch (error) {
-    console.error('Error serving swagger.yaml:', error);
-    res.status(500).json({
-      error: 'Failed to serialize Swagger specification',
-      message: error.message
-    });
-  }
-});
-
-// Bulletproof Swagger UI implementation - guaranteed to work
-app.get('/api-docs', (req, res) => {
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="LoopWin API Documentation" />
-  <title>LoopWin API Documentation</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
-</head>
-<body>
-<div id="swagger-ui"></div>
-<script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js" crossorigin></script>
-<script>
-  window.onload = () => {
-    window.ui = SwaggerUIBundle({
-      url: '${baseUrl}/swagger.yaml',
-      dom_id: '#swagger-ui',
-      presets: [
-        SwaggerUIBundle.presets.apis,
-        SwaggerUIBundle.presets.standalone,
-      ],
-      layout: "StandaloneLayout",
-      deepLinking: true,
-      showExtensions: true,
-      showCommonExtensions: true,
-      tryItOutEnabled: true,
-      requestInterceptor: (request) => {
-        request.headers['Accept'] = 'application/json';
-        return request;
-      },
-      onComplete: () => {
-        console.log('LoopWin API Documentation loaded successfully');
-      },
-      onFailure: (err) => {
-        console.error('Failed to load API documentation:', err);
-      }
-    });
-  };
-</script>
-</body>
-</html>`;
-  
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.send(html);
-});
+}));
 
 // Alternative endpoint for documentation
 app.get('/docs', (req, res) => {
   res.redirect('/api-docs');
-});
-
-// Debug route to test CDN access
-app.get('/test-swagger', (req, res) => {
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Swagger CDN Test</title>
-</head>
-<body>
-  <h1>Testing Swagger UI CDN</h1>
-  <div id="status"></div>
-  
-  <script>
-    async function testCDN() {
-      const status = document.getElementById('status');
-      
-      try {
-        // Test CSS
-        const cssResponse = await fetch('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css');
-        status.innerHTML += '<p>CSS Status: ' + cssResponse.status + '</p>';
-        
-        // Test JS Bundle
-        const jsResponse = await fetch('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js');
-        status.innerHTML += '<p>JS Bundle Status: ' + jsResponse.status + '</p>';
-        
-        // Test Standalone
-        const standaloneResponse = await fetch('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js');
-        status.innerHTML += '<p>Standalone Status: ' + standaloneResponse.status + '</p>';
-        
-        // Test our YAML
-        const yamlResponse = await fetch('/swagger.yaml');
-        status.innerHTML += '<p>YAML Status: ' + yamlResponse.status + '</p>';
-        
-      } catch (error) {
-        status.innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
-      }
-    }
-    
-    testCDN();
-  </script>
-</body>
-</html>`;
-  
-  res.setHeader('Content-Type', 'text/html');
-  res.send(html);
 });
 
 

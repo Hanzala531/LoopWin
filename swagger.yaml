@@ -363,6 +363,33 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /products/{id}:
+    get:
+      tags:
+        - Product Management
+      summary: Get product by ID
+      description: Retrieve a specific product by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Product ID
+          schema:
+            type: string
+            format: objectid
+      responses:
+        '200':
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /products/add:
     post:
       tags:

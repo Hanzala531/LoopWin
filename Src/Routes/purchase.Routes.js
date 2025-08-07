@@ -2,7 +2,7 @@ import express from 'express';
 import { verifyJWT } from '../Middlewares/Auth.middleware.js';
 import { requestLogger } from '../Middlewares/reqLog.middleware.js';
 import { verifyAdmin } from '../Middlewares/Role.middlewares.js';
-import { upload } from '../Middlewares/Multer.middleware.js';
+import { upload } from '../Middlewares/multer.middleware.js';
 import {
     createPurchase,
     getMyPurchases,
