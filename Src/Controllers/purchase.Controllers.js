@@ -60,7 +60,7 @@ const createPurchase = asyncHandler(async (req, res) => {
 // Get all purchases for current user (Only completed purchases by default)
 const getMyPurchases = asyncHandler(async (req, res) => {
     try {
-        const { page = 1, limit = 10, showAll = false } = req.query;
+        const { page = 1, limit = 9, showAll = false } = req.query;
 
         // Build filter - by default only show completed purchases
         const filter = { userId: req.user._id };
@@ -79,6 +79,7 @@ const getMyPurchases = asyncHandler(async (req, res) => {
 
         const purchases = await Purchase.find(filter)
             .populate('userId', 'name phone')
+            .populate('productId' , 'name headline description picture productLink')
             .sort(sort)
             .skip(skip)
             .limit(parseInt(limit));
@@ -192,9 +193,19 @@ const uploadPaymentScreenshot = asyncHandler(async (req, res) => {
 
         const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
         if (!cloudinaryResponse) {
-            return res.json(
-                new ApiResponse(500, null, "Failed to upload payment screenshot")
-            );
+            // File ko delete karne ki koshish karein
+        try {
+            fs.unlinkSync(req.file.path);
+            console.log("Local image deleted successfully.");
+        } catch (error) {
+            // Agar file delete nahi hoti to sirf error log karein
+            console.error("Error deleting local image:", error);
+        }
+
+        // Ab response bhej dein, chahe file delete hui ho ya na ho
+        return res.json(
+            new ApiResponse(500, null, "Failed to upload image")
+        );
         }
 
         // ✅ UPDATED: Update purchase with screenshot, transaction ID and status

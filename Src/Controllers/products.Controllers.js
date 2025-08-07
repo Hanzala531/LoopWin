@@ -105,9 +105,19 @@ const createProduct = asyncHandler(async (req, res) => {
             if (cloudinaryResponse) {
                 pictureUrl = cloudinaryResponse.secure_url;
             } else {
-                return res.json(
-                    new ApiResponse(500, null, "Failed to upload image")
-                );
+                // File ko delete karne ki koshish karein
+        try {
+            fs.unlinkSync(req.file.path);
+            console.log("Local image deleted successfully.");
+        } catch (error) {
+            // Agar file delete nahi hoti to sirf error log karein
+            console.error("Error deleting local image:", error);
+        }
+
+        // Ab response bhej dein, chahe file delete hui ho ya na ho
+        return res.json(
+            new ApiResponse(500, null, "Failed to upload image")
+        );
             }
         } else {
             return res.json(
