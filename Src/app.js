@@ -80,16 +80,16 @@ app.get('/health', (req, res) => {
 // Load Swagger YAML file
 const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
 
-// Swagger UI setup
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "LoopWin API Documentation",
-  customfavIcon: "/favicon.ico",
-  swaggerOptions: {
-    persistAuthorization: true,
-  }
-}));
+// Serve swagger.yaml file
+app.get('/swagger.yaml', (req, res) => {
+  res.setHeader('Content-Type', 'application/yaml');
+  res.sendFile(path.join(__dirname, '../swagger.yaml'));
+});
+
+// Swagger UI setup - redirect to static HTML page
+app.get('/api-docs', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Public/swagger-ui.html'));
+});
 
 // Alternative endpoint for documentation
 app.get('/docs', (req, res) => {
