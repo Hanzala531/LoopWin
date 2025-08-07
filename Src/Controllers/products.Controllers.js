@@ -7,7 +7,7 @@ import { uploadOnCloudinary } from "../Utilities/cloudinary.js";
 // Get all Products controller
 const getAllProducts = asyncHandler(async (req, res) => {
     try {
-        const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        const { page = 1, limit = 9, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
         
         // Build sort object
         const sort = {};
