@@ -1,14 +1,14 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 
-// Configuration of Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 const uploadOnCloudinary = async (localFilePath) => {
+  // Configure Cloudinary inside the function to ensure env vars are loaded
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+
   const timerLabel = `uploadTime-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
   console.time(timerLabel);
   
@@ -28,7 +28,11 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     // Check if Cloudinary credentials are available
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      throw new Error("Cloudinary credentials are missing. Check your .env file");
+      console.error("Missing Cloudinary credentials:");
+      console.error("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME || "MISSING");
+      console.error("API_KEY:", process.env.CLOUDINARY_API_KEY || "MISSING");
+      console.error("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "SET" : "MISSING");
+      throw new Error("Cloudinary credentials are missing. Check your environment variables");
     }
 
     // Check if the file exists before uploading
