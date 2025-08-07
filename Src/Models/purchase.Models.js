@@ -28,6 +28,10 @@ const purchaseSchema = new mongoose.Schema({
   paymentScreenshot : {
     type : String
   },
+  transactionId:{
+    type : String,
+
+  },
   userPayment: {
     type: String,
     enum: ["pending", "in-progress", "payed"],

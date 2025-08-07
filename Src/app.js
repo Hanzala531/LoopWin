@@ -1,8 +1,6 @@
 import express, { urlencoded } from "express";
 import cors from "cors";
 import cookieparser from "cookie-parser";
-import swaggerUi from "swagger-ui-express";
-import YAML from "yamljs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -57,9 +55,7 @@ app.get('/', (req, res) => {
         '/api/v1/users',
         '/api/v1/products',
         '/api/v1/purchases',
-        '/api/v1/giveaways',
-        '/api-docs',
-        '/docs'
+        '/api/v1/giveaways'
       ]
     }
   });
@@ -76,27 +72,6 @@ app.get('/health', (req, res) => {
     }
   });
 });
-
-// Load Swagger YAML file
-const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
-
-// Swagger UI setup
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "LoopWin API Documentation",
-  customfavIcon: "/favicon.ico",
-  swaggerOptions: {
-    persistAuthorization: true,
-  }
-}));
-
-// Alternative endpoint for documentation
-app.get('/docs', (req, res) => {
-  res.redirect('/api-docs');
-});
-
-
 
 // creating user api
 import userRouter from "./Routes/user.Routes.js";

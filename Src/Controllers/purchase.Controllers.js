@@ -147,10 +147,18 @@ const getPurchaseById = asyncHandler(async (req, res) => {
 const uploadPaymentScreenshot = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
+        const { transactionId } = req.body; // ✅ NEW: Get transaction ID from request body
 
         if (!id) {
             return res.json(
                 new ApiResponse(400, null, "Purchase ID is required")
+            );
+        }
+
+        // ✅ NEW: Validate transaction ID
+        if (!transactionId || transactionId.trim() === "") {
+            return res.json(
+                new ApiResponse(400, null, "Transaction ID is required")
             );
         }
 
@@ -171,7 +179,7 @@ const uploadPaymentScreenshot = asyncHandler(async (req, res) => {
         // Only allow if payment is pending or in-progress
         if (purchase.userPayment === "payed") {
             return res.json(
-                new ApiResponse(400, null, "Payment screenshot already uploaded")
+                new ApiResponse(400, null, "Payment screenshot and transaction ID already uploaded")
             );
         }
 
@@ -189,9 +197,10 @@ const uploadPaymentScreenshot = asyncHandler(async (req, res) => {
             );
         }
 
-        // Update purchase with screenshot and automatically mark as payed
+        // ✅ UPDATED: Update purchase with screenshot, transaction ID and status
         purchase.paymentScreenshot = cloudinaryResponse.secure_url;
-        purchase.userPayment = "payed"; // ✅ Auto-mark as payed when screenshot uploaded
+        purchase.transactionId = transactionId.trim(); // ✅ NEW: Save transaction ID
+        purchase.userPayment = "payed"; // ✅ Auto-mark as payed when both screenshot and transaction ID uploaded
         purchase.paymentApproval = "in-progress"; // ✅ Move to admin review
         await purchase.save();
 
@@ -199,7 +208,7 @@ const uploadPaymentScreenshot = asyncHandler(async (req, res) => {
             .populate('userId', 'name phone')
 
         return res.status(200).json(
-            new ApiResponse(200, updatedPurchase, "Payment screenshot uploaded and marked as paid. Waiting for admin approval.")
+            new ApiResponse(200, updatedPurchase, "Payment screenshot and transaction ID uploaded successfully. Waiting for admin approval.")
         );
 
     } catch (error) {
