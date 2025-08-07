@@ -79,15 +79,17 @@ app.get('/health', (req, res) => {
 // Load Swagger YAML file
 const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
 
-// Serve swagger.yaml file
-app.get('/swagger.yaml', (req, res) => {
-  res.setHeader('Content-Type', 'application/yaml');
-  res.sendFile(path.join(__dirname, '../swagger.yaml'));
+// Swagger UI setup - serve static HTML page
+app.get('/api-docs', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.sendFile(path.join(__dirname, '../Public/swagger-ui.html'));
 });
 
-// Swagger UI setup - redirect to static HTML page
-app.get('/api-docs', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Public/swagger-ui.html'));
+// Serve swagger.yaml file directly (backup route, also available as static file)
+app.get('/swagger.yaml', (req, res) => {
+  res.setHeader('Content-Type', 'application/x-yaml');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.sendFile(path.join(__dirname, '../swagger.yaml'));
 });
 
 // Alternative endpoint for documentation
