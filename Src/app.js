@@ -6,8 +6,10 @@ import YAML from "yamljs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+
 // Get directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
+
 const __dirname = path.dirname(__filename);
 
 const app = express();
@@ -80,19 +82,7 @@ app.get('/health', (req, res) => {
 // Load Swagger YAML file
 const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
 
-<<<<<<< HEAD
-// Swagger UI setup
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "LoopWin API Documentation",
-  customfavIcon: "/favicon.ico",
-  swaggerOptions: {
-    persistAuthorization: true,
-  }
-}));
-=======
-// Serve swagger.yaml with proper headers
+// Serve swagger.yaml with correct headers
 app.get('/swagger.yaml', (req, res) => {
   res.setHeader('Content-Type', 'text/yaml');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -100,7 +90,7 @@ app.get('/swagger.yaml', (req, res) => {
   res.send(YAML.stringify(swaggerDocument, 4));
 });
 
-// Swagger UI setup - generate HTML directly in route
+// Swagger UI setup using CDN assets to avoid MIME/404 errors
 app.get('/api-docs', (req, res) => {
   const html = `
 <!DOCTYPE html>
@@ -113,7 +103,7 @@ app.get('/api-docs', (req, res) => {
   <style>
     html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
     *, *:before, *:after { box-sizing: inherit; }
-    body { margin: 0; background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .swagger-ui .topbar { display: none !important; }
     #swagger-ui { max-width: 1200px; margin: 0 auto; padding: 20px; }
   </style>
@@ -142,11 +132,9 @@ app.get('/api-docs', (req, res) => {
   </script>
 </body>
 </html>`;
-  
   res.setHeader('Content-Type', 'text/html');
   res.send(html);
 });
->>>>>>> parent of f34f153 (Implement comprehensive Swagger documentation enhancements: add validation, improve error handling, and optimize routing for Vercel deployment)
 
 // Alternative endpoint for documentation
 app.get('/docs', (req, res) => {
