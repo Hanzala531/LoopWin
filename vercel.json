@@ -8,6 +8,21 @@
   ],
   "routes": [
     {
+<<<<<<< HEAD
+=======
+      "src": "/swagger.yaml",
+      "dest": "api/index.js"
+    },
+    {
+      "src": "/api-docs",
+      "dest": "api/index.js"
+    },
+    {
+      "src": "/docs",
+      "dest": "api/index.js"
+    },
+    {
+>>>>>>> parent of f34f153 (Implement comprehensive Swagger documentation enhancements: add validation, improve error handling, and optimize routing for Vercel deployment)
       "src": "/api/(.*)",
       "dest": "api/index.js"
     },
@@ -16,6 +31,51 @@
       "dest": "api/index.js"
     }
   ],
+<<<<<<< HEAD
+=======
+  "headers": [
+    {
+      "source": "/swagger.yaml",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/x-yaml"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/api-docs",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/html"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.js)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.css)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/css"
+        }
+      ]
+    }
+  ],
+>>>>>>> parent of f34f153 (Implement comprehensive Swagger documentation enhancements: add validation, improve error handling, and optimize routing for Vercel deployment)
   "env": {
     "NODE_ENV": "production"
   }
