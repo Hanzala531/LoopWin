@@ -1,6 +1,14 @@
 import express, { urlencoded } from "express";
 import cors from "cors";
 import cookieparser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import YAML from "yamljs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Get directory name for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -48,6 +56,10 @@ app.get('/', (req, res) => {
       availableEndpoints: [
         '/api/v1/users',
         '/api/v1/products',
+        '/api/v1/purchases',
+        '/api/v1/giveaways',
+        '/api-docs',
+        '/docs'
       ]
     }
   });
@@ -65,6 +77,25 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Load Swagger YAML file
+const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
+
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerDocument, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "LoopWin API Documentation",
+  customfavIcon: "/favicon.ico",
+  swaggerOptions: {
+    persistAuthorization: true,
+  }
+}));
+
+// Alternative endpoint for documentation
+app.get('/docs', (req, res) => {
+  res.redirect('/api-docs');
+});
+
 
 
 // creating user api
@@ -73,6 +104,15 @@ app.use("/api/v1/users", userRouter);
 
 // creating products api
 import productRouter from "./Routes/products,Routes.js";
-app.use("/api/v1/products" , productRouter)
+app.use("/api/v1/products", productRouter);
+
+// creating purchase api
+import purchaseRouter from "./Routes/purchase.Routes.js";
+app.use("/api/v1/purchases", purchaseRouter);
+
+// creating giveaway api
+import giveawayRouter from "./Routes/giveaway.Routes.js";
+app.use("/api/v1/giveaways", giveawayRouter);
+
 
 export { app };

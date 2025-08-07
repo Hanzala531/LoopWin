@@ -17,6 +17,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
         const skip = (page - 1) * limit;
 
         const products = await Products.find()
+            .select('-productLink')
             .populate('createdBy', 'name phone status')
             .sort(sort)
             .skip(skip)
@@ -26,7 +27,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
         const totalPages = Math.ceil(totalProducts / limit);
 
         if (!products || products.length === 0) {
-            return res.status(404).json(
+            return res.json(
                 new ApiResponse(404, null, "No products found in database")
             );
         }
@@ -56,13 +57,17 @@ const getProductById = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         if (!id) {
-            throw new ApiError(400, "Product ID is required");
+            return res.json(
+                new ApiResponse(400, null, "Product ID is required")
+            );
         }
 
         const product = await Products.findById(id).populate('createdBy', 'name phone status');
 
         if (!product) {
-            throw new ApiError(404, "Product not found");
+            return res.json(
+                new ApiResponse(404, null, "Product not found")
+            );
         }
 
         return res.status(200).json(
@@ -78,15 +83,19 @@ const getProductById = asyncHandler(async (req, res) => {
 // Create new product controller
 const createProduct = asyncHandler(async (req, res) => {
     try {
-        const { name, headline, description, price } = req.body;
+        const { name, headline, description, price , productLink} = req.body;
 
         // Validation
-        if (!name || !headline || !description || !price) {
-            throw new ApiError(400, "Name, headline, description, and price are required");
+        if (!name || !headline || !description || !price || !productLink) {
+            return res.json(
+                new ApiResponse(400, null, "Name, headline, description, productLink and price are required")
+            );
         }
 
         if (price <= 0) {
-            throw new ApiError(400, "Price must be greater than 0");
+            return res.json(
+                new ApiResponse(400, null, "Price must be greater than 0")
+            );
         }
 
         // Handle image upload
@@ -96,10 +105,14 @@ const createProduct = asyncHandler(async (req, res) => {
             if (cloudinaryResponse) {
                 pictureUrl = cloudinaryResponse.secure_url;
             } else {
-                throw new ApiError(500, "Failed to upload image");
+                return res.json(
+                    new ApiResponse(500, null, "Failed to upload image")
+                );
             }
         } else {
-            throw new ApiError(400, "Product picture is required");
+            return res.json(
+                new ApiResponse(400, null, "Product picture is required")
+            );
         }
 
         // Create product with createdBy field
@@ -109,6 +122,7 @@ const createProduct = asyncHandler(async (req, res) => {
             description,
             picture: pictureUrl,
             price,
+            productLink,
             createdBy: req.user._id
         });
 
@@ -129,25 +143,33 @@ const createProduct = asyncHandler(async (req, res) => {
 const updateProduct = asyncHandler(async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, headline, description, price } = req.body;
+        const { name, headline, description, price , productLink} = req.body;
 
         if (!id) {
-            throw new ApiError(400, "Product ID is required");
+            return res.json(
+                new ApiResponse(400, null, "Product ID is required")
+            );
         }
 
         const product = await Products.findById(id);
         if (!product) {
-            throw new ApiError(404, "Product not found");
+            return res.json(
+                new ApiResponse(404, null, "Product not found")
+            );
         }
 
         // Check if user is authorized to update (admin or product creator)
         if (req.user.status !== 'admin' && product.createdBy.toString() !== req.user._id.toString()) {
-            throw new ApiError(403, "You are not authorized to update this product");
+            return res.json(
+                new ApiResponse(403, null, "You are not authorized to update this product")
+            );
         }
 
         // Validate price if provided
         if (price && price <= 0) {
-            throw new ApiError(400, "Price must be greater than 0");
+            return res.json(
+                new ApiResponse(400, null, "Price must be greater than 0")
+            );
         }
 
         // Handle image upload if new image is provided
@@ -167,6 +189,7 @@ const updateProduct = asyncHandler(async (req, res) => {
                 ...(headline && { headline }),
                 ...(description && { description }),
                 ...(price && { price }),
+                ...(productLink && { productLink }),
                 ...(pictureUrl && { picture: pictureUrl })
             },
             { new: true, runValidators: true }
@@ -188,17 +211,23 @@ const deleteProduct = asyncHandler(async (req, res) => {
         const { id } = req.params;
 
         if (!id) {
-            throw new ApiError(400, "Product ID is required");
+            return res.json(
+                new ApiResponse(400, null, "Product ID is required")
+            );
         }
 
         const product = await Products.findById(id);
         if (!product) {
-            throw new ApiError(404, "Product not found");
+            return res.json(
+                new ApiResponse(404, null, "Product not found")
+            );
         }
 
         // Check if user is authorized to delete (admin or product creator)
         if (req.user.status !== 'admin' && product.createdBy.toString() !== req.user._id.toString()) {
-            throw new ApiError(403, "You are not authorized to delete this product");
+            return res.json(
+                new ApiResponse(403, null, "You are not authorized to delete this product")
+            );
         }
 
         await Products.findByIdAndDelete(id);
@@ -221,7 +250,9 @@ const searchProducts = asyncHandler(async (req, res) => {
         const { q, minPrice, maxPrice, page = 1, limit = 10 } = req.query;
 
         if (!q) {
-            throw new ApiError(400, "Search query is required");
+            return res.json(
+                new ApiResponse(400, null, "Search query is required")
+            );
         }
 
         // Build search filter

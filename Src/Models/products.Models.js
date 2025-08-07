@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const productSchema = new mongoose.Schema({
     createdBy: {
@@ -26,6 +27,10 @@ const productSchema = new mongoose.Schema({
         type: Number,
         required: true,
         default: 0
+    },
+    productLink : {
+        type : String,
+        required : true
     }
 }, {
     timestamps: true,
