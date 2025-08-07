@@ -3,9 +3,15 @@ import dotenv from 'dotenv';
 import { app } from './app.js';
 
 // Load environment variables
-dotenv.config({
-    path: './.env'
-});
+dotenv.config();
+
+// Debug environment variables in development
+if (process.env.NODE_ENV === 'development') {
+    console.log('Environment variables loaded:');
+    console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING');
+    console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING');
+    console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING');
+}
 
 // Connect to MongoDB
 connectDB()
