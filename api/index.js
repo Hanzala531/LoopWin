@@ -1,11 +1,8 @@
 import connectDB from '../Src/Database/index.js';
-import dotenv from 'dotenv';
 import { app } from '../Src/app.js';
 
-// Load environment variables
-dotenv.config({
-    path: '../.env'
-});
+// For Vercel, environment variables are handled automatically
+// No need to load .env file
 
 // Connect to MongoDB for Vercel
 let isConnected = false;
@@ -21,14 +18,20 @@ const connectToDatabase = async () => {
     console.log('✅ MongoDB connected for Vercel deployment');
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error);
+    throw error;
   }
 };
 
-// Initialize database connection
-connectToDatabase();
-
 // For Vercel, we export the app as a serverless function
 export default async (req, res) => {
-  await connectToDatabase();
-  return app(req, res);
+  try {
+    await connectToDatabase();
+    return app(req, res);
+  } catch (error) {
+    console.error('Serverless function error:', error);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+    });
+  }
 };
