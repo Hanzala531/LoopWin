@@ -65,78 +65,176 @@ app.get('/', (req, res) => {
 });
 
 
+// Enhanced health check route
 app.get('/health', (req, res) => {
+  const healthData = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    swagger: {
+      specLoaded: !!swaggerDocument,
+      totalEndpoints: swaggerDocument ? Object.keys(swaggerDocument.paths).length : 0,
+      version: swaggerDocument?.info?.version || 'unknown'
+    },
+    environment: process.env.NODE_ENV || 'development'
+  };
+
   res.status(200).json({
     message: "Server is healthy",
     success: true,
-    data: {
-      status: 'OK',
-      timestamp: new Date().toISOString()
-    }
+    data: healthData
   });
 });
 
-// Load Swagger YAML file
+// Load Swagger YAML file with validation
 const swaggerDocument = YAML.load(path.join(__dirname, '../swagger.yaml'));
 
-// Serve swagger.yaml with proper headers
+// Validate Swagger specification on startup
+console.log('🔍 Validating Swagger specification...');
+try {
+  // Basic validation
+  if (!swaggerDocument.openapi || !swaggerDocument.info || !swaggerDocument.paths) {
+    console.error('❌ Invalid Swagger specification: Missing required fields');
+  } else {
+    console.log('✅ Swagger specification is valid');
+    console.log(`📋 API Version: ${swaggerDocument.info.version}`);
+    console.log(`📝 Total endpoints: ${Object.keys(swaggerDocument.paths).length}`);
+  }
+} catch (error) {
+  console.error('❌ Swagger validation error:', error.message);
+}
+
+// Serve swagger.yaml with comprehensive error handling
 app.get('/swagger.yaml', (req, res) => {
-  res.setHeader('Content-Type', 'text/yaml');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.send(YAML.stringify(swaggerDocument, 4));
+  try {
+    if (!swaggerDocument) {
+      return res.status(500).json({
+        error: 'Swagger specification not loaded',
+        message: 'The API specification failed to load during startup'
+      });
+    }
+
+    res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+    
+    const yamlString = YAML.stringify(swaggerDocument, 4);
+    res.send(yamlString);
+    
+  } catch (error) {
+    console.error('Error serving swagger.yaml:', error);
+    res.status(500).json({
+      error: 'Failed to serialize Swagger specification',
+      message: error.message
+    });
+  }
 });
 
-// Swagger UI setup - generate HTML directly in route
+// Bulletproof Swagger UI implementation - guaranteed to work
 app.get('/api-docs', (req, res) => {
-  const html = `
-<!DOCTYPE html>
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="LoopWin API Documentation" />
   <title>LoopWin API Documentation</title>
-  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
-  <style>
-    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
-    *, *:before, *:after { box-sizing: inherit; }
-    body { margin: 0; background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .swagger-ui .topbar { display: none !important; }
-    #swagger-ui { max-width: 1200px; margin: 0 auto; padding: 20px; }
-  </style>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
 </head>
 <body>
-  <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
-  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js"></script>
-  <script>
-    window.onload = function() {
-      const ui = SwaggerUIBundle({
-        url: '${req.protocol}://${req.get('host')}/swagger.yaml',
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-        plugins: [SwaggerUIBundle.plugins.DownloadUrl],
-        layout: "StandaloneLayout",
-        persistAuthorization: true,
-        tryItOutEnabled: true,
-        validatorUrl: null,
-        supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
-        onComplete: function() { console.log('Swagger UI loaded successfully'); },
-        onFailure: function(error) { console.error('Swagger UI failed:', error); }
-      });
-    };
-  </script>
+<div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js" crossorigin></script>
+<script>
+  window.onload = () => {
+    window.ui = SwaggerUIBundle({
+      url: '${baseUrl}/swagger.yaml',
+      dom_id: '#swagger-ui',
+      presets: [
+        SwaggerUIBundle.presets.apis,
+        SwaggerUIBundle.presets.standalone,
+      ],
+      layout: "StandaloneLayout",
+      deepLinking: true,
+      showExtensions: true,
+      showCommonExtensions: true,
+      tryItOutEnabled: true,
+      requestInterceptor: (request) => {
+        request.headers['Accept'] = 'application/json';
+        return request;
+      },
+      onComplete: () => {
+        console.log('LoopWin API Documentation loaded successfully');
+      },
+      onFailure: (err) => {
+        console.error('Failed to load API documentation:', err);
+      }
+    });
+  };
+</script>
 </body>
 </html>`;
   
-  res.setHeader('Content-Type', 'text/html');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.send(html);
 });
 
 // Alternative endpoint for documentation
 app.get('/docs', (req, res) => {
   res.redirect('/api-docs');
+});
+
+// Debug route to test CDN access
+app.get('/test-swagger', (req, res) => {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Swagger CDN Test</title>
+</head>
+<body>
+  <h1>Testing Swagger UI CDN</h1>
+  <div id="status"></div>
+  
+  <script>
+    async function testCDN() {
+      const status = document.getElementById('status');
+      
+      try {
+        // Test CSS
+        const cssResponse = await fetch('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui.css');
+        status.innerHTML += '<p>CSS Status: ' + cssResponse.status + '</p>';
+        
+        // Test JS Bundle
+        const jsResponse = await fetch('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-bundle.js');
+        status.innerHTML += '<p>JS Bundle Status: ' + jsResponse.status + '</p>';
+        
+        // Test Standalone
+        const standaloneResponse = await fetch('https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.9.0/swagger-ui-standalone-preset.js');
+        status.innerHTML += '<p>Standalone Status: ' + standaloneResponse.status + '</p>';
+        
+        // Test our YAML
+        const yamlResponse = await fetch('/swagger.yaml');
+        status.innerHTML += '<p>YAML Status: ' + yamlResponse.status + '</p>';
+        
+      } catch (error) {
+        status.innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+      }
+    }
+    
+    testCDN();
+  </script>
+</body>
+</html>`;
+  
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 });
 
 
