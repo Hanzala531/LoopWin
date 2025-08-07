@@ -1,9 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-import dotenv from "dotenv";
-
-// Load environment variables
-dotenv.config();
 
 // Configuration of Cloudinary
 cloudinary.config({
@@ -22,11 +18,13 @@ const uploadOnCloudinary = async (localFilePath) => {
       return null;
     }
 
-    // Debug: Log environment variables (remove in production)
-    console.log("Cloudinary Config Check:");
-    console.log("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME ? "✓" : "✗");
-    console.log("API_KEY:", process.env.CLOUDINARY_API_KEY ? "✓" : "✗");
-    console.log("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "✓" : "✗");
+    // Debug: Log environment variables (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log("Cloudinary Config Check:");
+      console.log("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME ? "✓" : "✗");
+      console.log("API_KEY:", process.env.CLOUDINARY_API_KEY ? "✓" : "✗");
+      console.log("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "✓" : "✗");
+    }
 
     // Check if Cloudinary credentials are available
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
@@ -43,7 +41,9 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     const response = await cloudinary.uploader.upload(localFilePath, { 
       resource_type: "auto",
-      folder: "loopwin-products" // Optional: organize uploads in a folder
+      folder: "loopwin-products", // Optional: organize uploads in a folder
+      quality: "auto:good", // Optimize image quality
+      fetch_format: "auto" // Optimize format (webp, etc.)
     });
     
     console.log("File uploaded to Cloudinary successfully:", response.secure_url);
