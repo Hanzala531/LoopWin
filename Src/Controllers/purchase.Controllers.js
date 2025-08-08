@@ -246,6 +246,7 @@ const getAllPurchases = asyncHandler(async (req, res) => {
 
         const purchases = await Purchase.find(filter)
             .populate('userId', 'name phone')
+            .populate('productId', 'name headline description picture price ')
             .sort(sort)
             .skip(skip)
             .limit(parseInt(limit));
