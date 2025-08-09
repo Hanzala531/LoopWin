@@ -61,88 +61,89 @@ const getUserById = asyncHandler(async (req, res) => {
   }
 });
 
-// Register User Controller (with referral support)
+// Register User Controller (with referral name stored in referredBy)
 const registerUser = asyncHandler(async (req, res) => {
   try {
-  const { name, phone, password, referralCode } = req.body;
+    const { name, phone, password } = req.body;
+
+    // Required fields check
     if (!name || !phone || !password) {
-      return res.json(new ApiResponse(400, "Please provide all required fields", false));
+      return res
+        .status(400)
+        .json(new ApiResponse(400, "Please provide all required fields", false));
     }
 
-   const phoneRegex = /^\+?[0-9]{11,15}$/;
-
+    // Phone validation
+    const phoneRegex = /^\+?[0-9]{11,15}$/;
     if (!phoneRegex.test(phone)) {
-      return res.json(
-        new ApiResponse(
-          400,
-          "Please provide a valid phone number",
-          false
-        )
-      );
+      return res
+        .status(400)
+        .json(new ApiResponse(400, "Please provide a valid phone number", false));
     }
 
-
-    // Checking if the email already exists
-    const existingEmail = await User.findOne({ phone: phone });
-    if (existingEmail) {
-      return res.json(new ApiResponse(400, "User with this phone number already exists", false));
+    // Check if user already exists
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json(new ApiResponse(400, "User with this phone number already exists", false));
     }
 
     // Prepare new user payload
-    const newUserPayload = {
-      name,
-      phone,
-      password,
-    };
+    const newUserPayload = { name, phone, password };
 
-    // If referral code provided, normalize, validate and link (support common aliases)
-    const providedReferralCode = (referralCode ?? req.body?.referalCode ?? req.body?.refCode ?? req.body?.referral);
-    let normalizedCodeUsed = null;
+    // --- Referral Code Handling (case-insensitive) ---
+    const providedReferralCode =
+      req.body?.referralCode ??
+      req.body?.referalCode ??
+      req.body?.referealCode ?? // typo support
+      req.body?.refCode ??
+      req.body?.referral;
+
     let referrerId = null;
     if (providedReferralCode) {
       const normalizedCode = String(providedReferralCode).trim();
-      if (!normalizedCode) {
-        return res.json(new ApiResponse(400, "Invalid referral code", false));
-      }
-      const referrer = await User.findOne({ referralCode: normalizedCode }).select("_id referralCount rewards referralCode");
+      const referrer = await User.findOne({
+        referralCode: { $regex: new RegExp(`^${normalizedCode}$`, "i") }
+      });
+
       if (!referrer) {
-        return res.json(new ApiResponse(400, "Invalid referral code", false));
+        return res
+          .status(400)
+          .json(new ApiResponse(400, "Invalid referral code", false));
       }
-      newUserPayload.referredBy = normalizedCode;
-      normalizedCodeUsed = normalizedCode;
+
+      // Store referrer's name instead of code
+      newUserPayload.referredBy = referrer.name;
       referrerId = referrer._id;
     }
 
-    // Creating the user
+    // --- Create New User ---
     const user = await User.create(newUserPayload);
 
-    // If referred, recompute and set referrer's counts to ensure correctness
-    if (normalizedCodeUsed && referrerId) {
-      const count = await User.countDocuments({ referredBy: normalizedCodeUsed });
+    // --- Increment Referrer Count ---
+    if (referrerId) {
       await User.updateOne(
         { _id: referrerId },
-        { $set: { referralCount: count, rewards: count } }
+        { $inc: { referralCount: 1, rewards: 1 } }
       );
     }
 
-    // checking if the user is created and selecting the required fields
+    // Return created user without sensitive data
     const createdUser = await User.findById(user._id).select(
       "-password -refreshToken"
     );
 
-    if (!createdUser) {
-      return res.json(new ApiResponse(500, "User not created due to some error", false));
-    }
-
-    // Generating the response
     return res
       .status(201)
       .json(new ApiResponse(201, createdUser, "User registered successfully"));
   } catch (error) {
-    console.log("Error in registering the user:", error);
+    console.error("Error in registering the user:", error);
     throw new ApiError(500, "Something went wrong while registering the user");
   }
 });
+
+
 
 // Admin: Recompute referral stats and backfill referral codes for all users
 const recomputeReferralStats = asyncHandler(async (req, res) => {

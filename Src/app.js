@@ -3,12 +3,16 @@ import cors from "cors";
 import cookieparser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
+import { initGiveawayCron } from "./Crons/giveaway.Crons.js";
 
 // Get directory name for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Cron job start
+initGiveawayCron();
 
 // middlewares - Configure CORS for production
 app.use(

@@ -13,104 +13,71 @@ import mongoose from "mongoose";
 
 // Create a new giveaway
 const createGiveaway = asyncHandler(async (req, res) => {
-    try {
-        const {
-            title,
-            description,
-            prizes,
-            eligibilityCriteria,
-            startDate,
-            endDate,
-            drawDate,
-            status
-        } = req.body;
+  const {
+    title,
+    description,
+    image,
+    prizes,
+    eligibilityCriteria,
+    startDate,
+    endDate,
+    drawDate
+  } = req.body;
 
-        // Validate required fields
-        if (!title || !description || !prizes || !startDate || !endDate || !drawDate) {
-            return res.json(
-                new ApiResponse(400, null, "All required fields must be provided")
-            );
-        }
+  // 1️⃣ Required fields check
+  if (!title || !description || !prizes || prizes.length === 0 || !startDate || !endDate || !drawDate) {
+    throw new ApiError(400, "Please provide all required fields");
+  }
 
-        // Validate prizes array
-        if (!Array.isArray(prizes) || prizes.length === 0) {
-            return res.json(
-                new ApiResponse(400, null, "At least one prize must be provided")
-            );
-        }
+  // 2️⃣ Dates validation
+  const sDate = new Date(startDate);
+  const eDate = new Date(endDate);
+  const dDate = new Date(drawDate);
 
-        // Validate each prize
-        for (let i = 0; i < prizes.length; i++) {
-            const prize = prizes[i];
-            if (!prize.name || !prize.description || prize.value === undefined || !prize.quantity || prize.quantity < 1) {
-                return res.json(
-                    new ApiResponse(400, null, `Prize ${i + 1} is invalid. Name, description, value, and quantity (>0) are required`)
-                );
-            }
-        }
+  if (sDate >= eDate) {
+    throw new ApiError(400, "End date must be after start date");
+  }
+  if (dDate < eDate) {
+    throw new ApiError(400, "Draw date must be on or after end date");
+  }
 
-        // Validate dates
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const draw = new Date(drawDate);
-
-        if (start >= end) {
-            return res.json(
-                new ApiResponse(400, null, "End date must be after start date")
-            );
-        }
-
-        if (draw < end) {
-            return res.json(
-                new ApiResponse(400, null, "Draw date must be on or after end date")
-            );
-        }
-
-        // Handle image upload if provided
-        let imageUrl = null;
-        if (req.file) {
-            const uploadResult = await uploadOnCloudinary(req.file.path);
-            if (uploadResult) {
-                imageUrl = uploadResult.url;
-            } else {
-                try {
-            fs.unlinkSync(req.file.path);
-            console.log("Local image deleted successfully.");
-        } catch (error) {
-            // Agar file delete nahi hoti to sirf error log karein
-            console.error("Error deleting local image:", error);
-        }
-        new ApiResponse(400, null, "Failed to upload giveaway image")
-            }
-        }
-
-        // Create giveaway
-        const giveaway = await Giveaway.create({
-            title,
-            description,
-            image: imageUrl,
-            createdBy: req.user._id,
-            prizes,
-            eligibilityCriteria: eligibilityCriteria || {},
-            startDate: start,
-            endDate: end,
-            drawDate: draw,
-            status: status || "draft"
-        });
-
-        const populatedGiveaway = await Giveaway.findById(giveaway._id)
-            .populate('createdBy', 'name phone')
-            .populate('eligibilityCriteria.eligibleProducts', 'name price');
-
-        return res.status(201).json(
-            new ApiResponse(201, populatedGiveaway, "Giveaway created successfully")
-        );
-
-    } catch (error) {
-        console.error("Create giveaway error:", error);
-         throw new ApiError(500, "Something went wrong while creating the giveaway");
+  // 3️⃣ Prize validation
+  for (let prize of prizes) {
+    if (!prize.name || !prize.description || prize.value === undefined || prize.quantity === undefined) {
+      throw new ApiError(400, "Each prize must have name, description, value, and quantity");
     }
+  }
+
+  // 4️⃣ Eligibility defaults
+  const eligibility = {
+    minPurchases: eligibilityCriteria?.minPurchases || 1,
+    minAmountSpent: eligibilityCriteria?.minAmountSpent || 0,
+    purchaseStartDate: eligibilityCriteria?.purchaseStartDate || null,
+    purchaseEndDate: eligibilityCriteria?.purchaseEndDate || null,
+    eligibleProducts: eligibilityCriteria?.eligibleProducts || []
+  };
+
+  // 5️⃣ Giveaway create
+  const giveaway = await Giveaway.create({
+    title,
+    description,
+    image: image || null,
+    createdBy: req.user._id,
+    prizes,
+    eligibilityCriteria: eligibility,
+    status: "draft", // always draft, cron job will activate
+    startDate: sDate,
+    endDate: eDate,
+    drawDate: dDate
+  });
+
+  return res
+    .status(201)
+    .json(new ApiResponse(201, giveaway, "Giveaway created successfully"));
 });
+
+export default createGiveaway;
+
 
 // Get all giveaways with filters and pagination
 const getAllGiveaways = asyncHandler(async (req, res) => {
