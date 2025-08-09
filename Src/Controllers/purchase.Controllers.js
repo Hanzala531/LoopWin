@@ -4,6 +4,7 @@ import { asyncHandler } from "../Utilities/asyncHandler.js";
 import { ApiError } from "../Utilities/ApiError.js";
 import { ApiResponse } from "../Utilities/ApiResponse.js";
 import { uploadOnCloudinary } from "../Utilities/cloudinary.js";
+import { sendTransactionEmail } from "../Middlewares/email.Services.js";
 
 // Create a new purchase (Buy Now functionality with duplicate prevention)
 const createPurchase = asyncHandler(async (req, res) => {
@@ -31,11 +32,11 @@ const createPurchase = asyncHandler(async (req, res) => {
             productId: productId
         });
 
-        // if (existingPurchase) {
-        //     return res.json(
-        //         new ApiResponse(400, null, "You have already purchased this product")
-        //     );
-        // }
+        if (existingPurchase) {
+            return res.json(
+                new ApiResponse(400, null, "You have already purchased this product")
+            );
+        }
 
         // Create purchase with new model structure
         const purchase = await Purchase.create({
@@ -217,9 +218,27 @@ const uploadPaymentScreenshot = asyncHandler(async (req, res) => {
 
         const updatedPurchase = await Purchase.findById(purchase._id)
             .populate('userId', 'name phone')
+            .populate('productId', 'name price');
+
+        // ✅ NEW: Send email notification to admin
+        try {
+            await sendTransactionEmail({
+                name: req.user.name,
+                phone: req.user.phone,
+                transactionId: transactionId.trim(),
+                productName: updatedPurchase.productId?.name || 'N/A',
+                productPrice: updatedPurchase.productId?.price || 0,
+                paymentScreenshot: cloudinaryResponse.secure_url,
+                purchaseId: purchase._id
+            });
+            console.log(`Email notification sent for purchase ${purchase._id}`);
+        } catch (emailError) {
+            console.error("Failed to send email notification:", emailError);
+            // Don't fail the upload if email fails - just log the error
+        }
 
         return res.status(200).json(
-            new ApiResponse(200, updatedPurchase, "Payment screenshot and transaction ID uploaded successfully. Waiting for admin approval.")
+            new ApiResponse(200, updatedPurchase, "Payment screenshot and transaction ID uploaded successfully. Admin has been notified via email.")
         );
 
     } catch (error) {

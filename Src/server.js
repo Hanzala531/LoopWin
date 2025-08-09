@@ -11,6 +11,8 @@ if (process.env.NODE_ENV === 'development') {
     console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'MISSING');
     console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? 'SET' : 'MISSING');
     console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? 'SET' : 'MISSING');
+    console.log('GMAIL_USER:', process.env.GMAIL_USER ? 'SET' : 'MISSING');
+    console.log('GMAIL_PASS:', process.env.GMAIL_PASS ? 'SET' : 'MISSING');
 }
 
 // Connect to MongoDB
