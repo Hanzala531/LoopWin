@@ -72,6 +72,15 @@ const createGiveaway = asyncHandler(async (req, res) => {
             const uploadResult = await uploadOnCloudinary(req.file.path);
             if (uploadResult) {
                 imageUrl = uploadResult.url;
+            } else {
+                try {
+            fs.unlinkSync(req.file.path);
+            console.log("Local image deleted successfully.");
+        } catch (error) {
+            // Agar file delete nahi hoti to sirf error log karein
+            console.error("Error deleting local image:", error);
+        }
+        new ApiResponse(400, null, "Failed to upload giveaway image")
             }
         }
 
@@ -99,9 +108,7 @@ const createGiveaway = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Create giveaway error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to create giveaway")
-        );
+         throw new ApiError(500, "Something went wrong while creating the giveaway");
     }
 });
 
@@ -162,9 +169,7 @@ const getAllGiveaways = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Get giveaways error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to retrieve giveaways")
-        );
+         throw new ApiError(500, "Something went wrong while retrieving the giveaway");
     }
 });
 
@@ -195,9 +200,7 @@ const getGiveawayById = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Get giveaway error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to retrieve giveaway")
-        );
+         throw new ApiError(500, "Something went wrong while retrieving the giveaway");
     }
 });
 
@@ -242,9 +245,7 @@ const updateGiveawayStatus = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Update giveaway status error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to update giveaway status")
-        );
+         throw new ApiError(500, "Something went wrong while updating giveaway status");
     }
 });
 
@@ -285,9 +286,7 @@ const deleteGiveaway = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Delete giveaway error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to delete giveaway")
-        );
+                 throw new ApiError(500, "Something went wrong while deleting giveaway");
     }
 });
 
@@ -394,9 +393,8 @@ const runGiveawayDraw = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Run draw error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to run draw")
-        );
+        throw new ApiError(500, "Something went wrong while starting draw");
+
     }
 });
 
@@ -494,7 +492,8 @@ const getEligibleParticipants = async (giveaway) => {
         }
     } catch (error) {
         console.error("Get eligible participants error:", error);
-        throw error;
+        throw new ApiError(500, "Something went wrong");
+;
     }
 };
 
@@ -552,9 +551,8 @@ const getGiveawayWinners = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Get winners error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to retrieve winners")
-        );
+        throw new ApiError(500, "Failed to retrive winners of draw");
+
     }
 });
 
@@ -607,9 +605,8 @@ const updateWinner = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Update winner error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to update winner")
-        );
+        throw new ApiError(500, "Something went wrong in updating the winner");
+
     }
 });
 
@@ -685,9 +682,8 @@ const replaceWinner = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Replace winner error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to replace winner")
-        );
+        throw new ApiError(500, "Something went wrong while changing winner");
+
     }
 });
 
@@ -729,9 +725,8 @@ const updateWinnerPrize = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Update winner prize error:", error);
-        return res.json(
-            new ApiResponse(500, null, error.message || "Failed to update winner prize")
-        );
+        throw new ApiError(500, "Something went wrong while updating prize");
+
     }
 });
 

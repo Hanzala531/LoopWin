@@ -13,12 +13,14 @@ const giveawaySchema = new mongoose.Schema({
     },
     image: {
         type: String, // Cloudinary URL
-        default: null
+        default: null,
+        trim: true
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        required: true,
+        trim: true
     },
     prizes: [{
         name: {
@@ -59,15 +61,18 @@ const giveawaySchema = new mongoose.Schema({
         },
         purchaseStartDate: {
             type: Date,
-            default: null
+            default: null,
+        trim: true
         },
         purchaseEndDate: {
             type: Date,
-            default: null
+            default: null,
+        trim: true
         },
         eligibleProducts: [{
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Products"
+            ref: "Products",
+        trim: true
         }]
     },
     status: {
@@ -77,15 +82,18 @@ const giveawaySchema = new mongoose.Schema({
     },
     startDate: {
         type: Date,
-        required: true
+        required: true,
+        trim: true
     },
     endDate: {
         type: Date,
-        required: true
+        required: true,
+        trim: true
     },
     drawDate: {
         type: Date,
-        required: true
+        required: true,
+        trim: true
     },
     drawCompleted: {
         type: Boolean,

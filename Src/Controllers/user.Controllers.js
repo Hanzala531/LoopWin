@@ -2,6 +2,11 @@ import { asyncHandler } from "../Utilities/asyncHandler.js";
 import { User } from "../Models/user.Models.js";
 import { ApiError } from "../Utilities/ApiError.js";
 import { ApiResponse } from "../Utilities/ApiResponse.js";
+// Get current authenticated user (profile)
+const getMe = asyncHandler(async (req, res) => {
+  // req.user is set by verifyJWT middleware and already excludes sensitive fields
+  return res.status(200).json(new ApiResponse(200, req.user, "User profile fetched successfully"));
+});
 
 // Access and Refresh Tokens
 const generateAccessAndRefreshTokens = async (userid) => {
@@ -56,10 +61,10 @@ const getUserById = asyncHandler(async (req, res) => {
   }
 });
 
-// Register User Controller
+// Register User Controller (with referral support)
 const registerUser = asyncHandler(async (req, res) => {
   try {
-    const { name, phone, password } = req.body;
+  const { name, phone, password, referralCode } = req.body;
     if (!name || !phone || !password) {
       return res.json(new ApiResponse(400, "Please provide all required fields", false));
     }
@@ -83,12 +88,29 @@ const registerUser = asyncHandler(async (req, res) => {
       return res.json(new ApiResponse(400, "User with this phone number already exists", false));
     }
 
-    // Creating the user
-    const user = await User.create({
+    // Prepare new user payload
+    const newUserPayload = {
       name,
       phone,
       password,
-    });
+    };
+
+    // If referral code provided, validate and link
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode }).select("_id referralCount rewards");
+      if (!referrer) {
+        return res.json(new ApiResponse(400, "Invalid referral code", false));
+      }
+      newUserPayload.referredBy = referralCode;
+      // Increment referrer's counters atomically
+      await User.updateOne(
+        { _id: referrer._id },
+        { $inc: { referralCount: 1, rewards: 1 } }
+      );
+    }
+
+    // Creating the user
+    const user = await User.create(newUserPayload);
 
     // checking if the user is created and selecting the required fields
     const createdUser = await User.findById(user._id).select(
@@ -102,7 +124,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // Generating the response
     return res
       .status(201)
-      .json(new ApiResponse(201, "User registered successfully", createdUser));
+      .json(new ApiResponse(201, createdUser, "User registered successfully"));
   } catch (error) {
     console.log("Error in registering the user:", error);
     throw new ApiError(500, "Something went wrong while registering the user");
@@ -220,6 +242,7 @@ const logoutUser =  asyncHandler ( async (req , res ) => {
   export {
     getAllUsers,
     getUserById,
+  getMe,
     registerUser,
     loginUser,
     logoutUser

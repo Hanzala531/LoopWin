@@ -5,6 +5,7 @@ import {verifyAdmin} from '../Middlewares/Role.middlewares.js'
 import {
     getAllUsers,
     getUserById,
+    getMe,
     registerUser,
     loginUser,
     logoutUser
@@ -21,6 +22,9 @@ userRouter.post("/login", requestLogger, loginUser);
 
 // Route to logout a user
 userRouter.post("/logout", requestLogger, verifyJWT, logoutUser);
+
+// Route to get current user profile
+userRouter.get("/me", requestLogger, verifyJWT, getMe);
 
 // Route to get all users (Admin only)
 userRouter.get("/", requestLogger, verifyJWT, verifyAdmin, getAllUsers);
