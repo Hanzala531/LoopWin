@@ -8,7 +8,8 @@ import {
     getMe,
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    recomputeReferralStats
 } from '../Controllers/user.Controllers.js'
 
 const userRouter = express.Router()
@@ -28,6 +29,9 @@ userRouter.get("/me", requestLogger, verifyJWT, getMe);
 
 // Route to get all users (Admin only)
 userRouter.get("/", requestLogger, verifyJWT, verifyAdmin, getAllUsers);
+
+// Admin: Recompute referral stats and backfill missing codes
+userRouter.post("/admin/recompute-referrals", requestLogger, verifyJWT, verifyAdmin, recomputeReferralStats);
 
 // Route to get user by ID
 userRouter.get("/:id", requestLogger, verifyJWT, getUserById);

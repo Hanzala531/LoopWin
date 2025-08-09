@@ -730,6 +730,209 @@ const updateWinnerPrize = asyncHandler(async (req, res) => {
     }
 });
 
+// Manually select a specific user as winner (Admin Choice)
+const selectManualWinner = asyncHandler(async (req, res) => {
+    try {
+        const { giveawayId } = req.params;
+        const { userId, prizeIndex, skipEligibilityCheck = false } = req.body;
+
+        // Validation
+        if (!mongoose.Types.ObjectId.isValid(giveawayId)) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid giveaway ID")
+            );
+        }
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid user ID")
+            );
+        }
+
+        if (prizeIndex === undefined || prizeIndex < 0) {
+            return res.json(
+                new ApiResponse(400, null, "Valid prize index is required")
+            );
+        }
+
+        // Get giveaway details
+        const giveaway = await Giveaway.findById(giveawayId);
+        if (!giveaway) {
+            return res.json(
+                new ApiResponse(404, null, "Giveaway not found")
+            );
+        }
+
+        // Check if prize index is valid
+        if (prizeIndex >= giveaway.prizes.length) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid prize index")
+            );
+        }
+
+        const selectedPrize = giveaway.prizes[prizeIndex];
+
+        // Get user details
+        const user = await User.findById(userId).select('name phone status');
+        if (!user) {
+            return res.json(
+                new ApiResponse(404, null, "User not found")
+            );
+        }
+
+        // Check if user is already a winner for this giveaway
+        const existingWinner = await Winner.findOne({ 
+            giveawayId: giveaway._id, 
+            userId: user._id 
+        });
+
+        if (existingWinner) {
+            return res.json(
+                new ApiResponse(400, null, "User is already a winner in this giveaway")
+            );
+        }
+
+        // Optional: Check eligibility (can be skipped for admin override)
+        if (!skipEligibilityCheck) {
+            const eligibleUsers = await getEligibleParticipants(giveaway);
+            const isEligible = eligibleUsers.some(eligibleUser => 
+                eligibleUser._id.toString() === user._id.toString()
+            );
+
+            if (!isEligible) {
+                return res.json(
+                    new ApiResponse(400, null, "User does not meet eligibility criteria for this giveaway. Set skipEligibilityCheck=true to override.")
+                );
+            }
+        }
+
+        // Check if there are remaining slots for this prize
+        const existingWinnersForPrize = await Winner.countDocuments({
+            giveawayId: giveaway._id,
+            'prizeWon.name': selectedPrize.name
+        });
+
+        if (existingWinnersForPrize >= selectedPrize.quantity) {
+            return res.json(
+                new ApiResponse(400, null, `All slots for prize "${selectedPrize.name}" are already filled`)
+            );
+        }
+
+        // Create the manual winner
+        const winner = await Winner.create({
+            giveawayId: giveaway._id,
+            userId: user._id,
+            prizeWon: {
+                name: selectedPrize.name,
+                description: selectedPrize.description,
+                value: selectedPrize.value,
+                image: selectedPrize.image
+            },
+            contactInfo: {
+                phone: user.phone || null
+            },
+            notes: `Manually selected by admin: ${req.user.name} at ${new Date().toISOString()}`
+        });
+
+        const populatedWinner = await Winner.findById(winner._id)
+            .populate('userId', 'name phone')
+            .populate('giveawayId', 'title');
+
+        return res.json(
+            new ApiResponse(200, {
+                winner: populatedWinner,
+                giveaway: {
+                    id: giveaway._id,
+                    title: giveaway.title
+                },
+                prize: selectedPrize,
+                adminAction: true,
+                selectedBy: req.user.name
+            }, "Winner manually selected successfully")
+        );
+
+    } catch (error) {
+        console.error("Select manual winner error:", error);
+        throw new ApiError(500, "Something went wrong while selecting manual winner");
+    }
+});
+
+// Get all users eligible for a giveaway (Helper for admin to see who can be selected)
+const getEligibleUsersForGiveaway = asyncHandler(async (req, res) => {
+    try {
+        const { giveawayId } = req.params;
+        const { page = 1, limit = 20, search } = req.query;
+
+        if (!mongoose.Types.ObjectId.isValid(giveawayId)) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid giveaway ID")
+            );
+        }
+
+        const giveaway = await Giveaway.findById(giveawayId);
+        if (!giveaway) {
+            return res.json(
+                new ApiResponse(404, null, "Giveaway not found")
+            );
+        }
+
+        // Get eligible participants
+        let eligibleUsers = await getEligibleParticipants(giveaway);
+
+        // Get existing winners to mark them
+        const existingWinnerIds = await Winner.find({ giveawayId: giveaway._id })
+            .distinct('userId');
+
+        // Filter search if provided
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            eligibleUsers = eligibleUsers.filter(user => 
+                searchRegex.test(user.name) || searchRegex.test(user.phone)
+            );
+        }
+
+        // Pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const paginatedUsers = eligibleUsers.slice(skip, skip + parseInt(limit));
+
+        // Mark users who are already winners
+        const usersWithWinnerStatus = paginatedUsers.map(user => ({
+            ...user.toObject(),
+            isAlreadyWinner: existingWinnerIds.some(winnerId => 
+                winnerId.toString() === user._id.toString()
+            )
+        }));
+
+        const totalUsers = eligibleUsers.length;
+        const totalPages = Math.ceil(totalUsers / parseInt(limit));
+
+        return res.json(
+            new ApiResponse(200, {
+                eligibleUsers: usersWithWinnerStatus,
+                availablePrizes: giveaway.prizes.map((prize, index) => ({
+                    index,
+                    name: prize.name,
+                    description: prize.description,
+                    value: prize.value,
+                    quantity: prize.quantity,
+                    remainingSlots: prize.quantity - existingWinnerIds.length // Simplified calculation
+                })),
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalUsers,
+                    hasNext: parseInt(page) < totalPages,
+                    hasPrev: parseInt(page) > 1
+                }
+            }, "Eligible users retrieved successfully")
+        );
+
+    } catch (error) {
+        console.error("Get eligible users error:", error);
+        throw new ApiError(500, "Something went wrong while retrieving eligible users");
+    }
+});
+
 // ==================== PUBLIC ENDPOINTS ====================
 
 // Get active giveaways for public viewing
@@ -758,6 +961,174 @@ const getActiveGiveaways = asyncHandler(async (req, res) => {
     }
 });
 
+// Remove a winner from the giveaway (Admin)
+const removeWinner = asyncHandler(async (req, res) => {
+    try {
+        const { winnerId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(winnerId)) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid winner ID")
+            );
+        }
+
+        const winner = await Winner.findById(winnerId)
+            .populate('userId', 'name phone')
+            .populate('giveawayId', 'title');
+
+        if (!winner) {
+            return res.json(
+                new ApiResponse(404, null, "Winner not found")
+            );
+        }
+
+        // Store winner info before deletion for response
+        const removedWinnerInfo = {
+            winnerId: winner._id,
+            user: {
+                id: winner.userId._id,
+                name: winner.userId.name,
+                phone: winner.userId.phone
+            },
+            giveaway: {
+                id: winner.giveawayId._id,
+                title: winner.giveawayId.title
+            },
+            prizeWon: winner.prizeWon,
+            wonAt: winner.wonAt,
+            deliveryStatus: winner.deliveryStatus
+        };
+
+        // Delete the winner
+        await Winner.findByIdAndDelete(winnerId);
+
+        return res.json(
+            new ApiResponse(200, {
+                removedWinner: removedWinnerInfo,
+                adminAction: true,
+                removedBy: req.user.name,
+                removedAt: new Date().toISOString()
+            }, `Winner ${removedWinnerInfo.user.name} removed successfully from giveaway`)
+        );
+
+    } catch (error) {
+        console.error("Remove winner error:", error);
+        throw new ApiError(500, "Something went wrong while removing winner");
+    }
+});
+
+// Get detailed prize information for a giveaway (Developer/Admin utility)
+const getGiveawayPrizeDetails = asyncHandler(async (req, res) => {
+    try {
+        const { giveawayId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(giveawayId)) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid giveaway ID")
+            );
+        }
+
+        const giveaway = await Giveaway.findById(giveawayId);
+        if (!giveaway) {
+            return res.json(
+                new ApiResponse(404, null, "Giveaway not found")
+            );
+        }
+
+        // Get all winners for this giveaway
+        const winners = await Winner.find({ giveawayId: giveaway._id })
+            .populate('userId', 'name phone')
+            .sort({ wonAt: -1 });
+
+        // Calculate detailed prize statistics
+        const prizeDetails = await Promise.all(
+            giveaway.prizes.map(async (prize, index) => {
+                // Get winners for this specific prize
+                const prizeWinners = winners.filter(winner => 
+                    winner.prizeWon.name === prize.name
+                );
+
+                // Group winners by delivery status
+                const statusGroups = {
+                    pending: prizeWinners.filter(w => w.deliveryStatus === 'pending'),
+                    contacted: prizeWinners.filter(w => w.deliveryStatus === 'contacted'),
+                    shipped: prizeWinners.filter(w => w.deliveryStatus === 'shipped'),
+                    delivered: prizeWinners.filter(w => w.deliveryStatus === 'delivered')
+                };
+
+                return {
+                    index,
+                    prize: {
+                        name: prize.name,
+                        description: prize.description,
+                        value: prize.value,
+                        image: prize.image,
+                        totalQuantity: prize.quantity
+                    },
+                    allocation: {
+                        totalAllocated: prizeWinners.length,
+                        remainingSlots: Math.max(0, prize.quantity - prizeWinners.length),
+                        allocationPercentage: ((prizeWinners.length / prize.quantity) * 100).toFixed(2)
+                    },
+                    winners: prizeWinners.map(winner => ({
+                        winnerId: winner._id,
+                        user: {
+                            id: winner.userId._id,
+                            name: winner.userId.name,
+                            phone: winner.userId.phone
+                        },
+                        wonAt: winner.wonAt,
+                        deliveryStatus: winner.deliveryStatus,
+                        notes: winner.notes
+                    })),
+                    deliveryStatus: {
+                        pending: statusGroups.pending.length,
+                        contacted: statusGroups.contacted.length,
+                        shipped: statusGroups.shipped.length,
+                        delivered: statusGroups.delivered.length
+                    }
+                };
+            })
+        );
+
+        // Overall statistics
+        const totalPrizeValue = giveaway.prizes.reduce((sum, prize) => sum + (prize.value * prize.quantity), 0);
+        const totalAllocatedValue = winners.reduce((sum, winner) => sum + winner.prizeWon.value, 0);
+        const totalWinners = winners.length;
+        const totalPossibleWinners = giveaway.prizes.reduce((sum, prize) => sum + prize.quantity, 0);
+
+        return res.json(
+            new ApiResponse(200, {
+                giveaway: {
+                    id: giveaway._id,
+                    title: giveaway.title,
+                    description: giveaway.description,
+                    status: giveaway.status,
+                    drawCompleted: giveaway.drawCompleted,
+                    startDate: giveaway.startDate,
+                    endDate: giveaway.endDate,
+                    drawDate: giveaway.drawDate
+                },
+                prizeDetails,
+                summary: {
+                    totalPrizes: giveaway.prizes.length,
+                    totalPossibleWinners,
+                    totalActualWinners: totalWinners,
+                    remainingSlots: totalPossibleWinners - totalWinners,
+                    completionPercentage: ((totalWinners / totalPossibleWinners) * 100).toFixed(2),
+                    totalPrizeValue,
+                    totalAllocatedValue,
+                    remainingPrizeValue: totalPrizeValue - totalAllocatedValue
+                }
+            }, "Prize details retrieved successfully")
+        );
+
+    } catch (error) {
+        console.error("Get prize details error:", error);
+        throw new ApiError(500, "Something went wrong while retrieving prize details");
+    }
+});
+
 export {
     // Giveaway Management
     createGiveaway,
@@ -772,6 +1143,14 @@ export {
     updateWinner,
     replaceWinner,
     updateWinnerPrize,
+    removeWinner,
+    
+    // Manual Winner Selection (Admin)
+    selectManualWinner,
+    getEligibleUsersForGiveaway,
+    
+    // Developer/Admin Utilities
+    getGiveawayPrizeDetails,
     
     // Public
     getActiveGiveaways

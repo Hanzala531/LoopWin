@@ -10,7 +10,11 @@ import {
     updateWinner,
     replaceWinner,
     updateWinnerPrize,
-    getActiveGiveaways
+    removeWinner,
+    getActiveGiveaways,
+    selectManualWinner,
+    getEligibleUsersForGiveaway,
+    getGiveawayPrizeDetails
 } from "../Controllers/giveaway.Controllers.js";
 import { verifyJWT } from "../Middlewares/Auth.middleware.js";
 import { verifyAdmin } from "../Middlewares/Role.middlewares.js";
@@ -39,5 +43,13 @@ router.route("/:giveawayId/winners").get(getGiveawayWinners);
 router.route("/winners/:winnerId").patch(updateWinner);
 router.route("/winners/:winnerId/replace").post(replaceWinner);
 router.route("/winners/:winnerId/prize").patch(updateWinnerPrize);
+router.route("/winners/:winnerId/remove").delete(removeWinner);
+
+// Manual Winner Selection (Admin)
+router.route("/:giveawayId/select-winner").post(selectManualWinner);
+router.route("/:giveawayId/eligible-users").get(getEligibleUsersForGiveaway);
+
+// Developer/Admin Utilities
+router.route("/:giveawayId/prize-details").get(getGiveawayPrizeDetails);
 
 export default router;

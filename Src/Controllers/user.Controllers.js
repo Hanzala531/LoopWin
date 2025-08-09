@@ -95,22 +95,35 @@ const registerUser = asyncHandler(async (req, res) => {
       password,
     };
 
-    // If referral code provided, validate and link
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode }).select("_id referralCount rewards");
+    // If referral code provided, normalize, validate and link (support common aliases)
+    const providedReferralCode = (referralCode ?? req.body?.referalCode ?? req.body?.refCode ?? req.body?.referral);
+    let normalizedCodeUsed = null;
+    let referrerId = null;
+    if (providedReferralCode) {
+      const normalizedCode = String(providedReferralCode).trim();
+      if (!normalizedCode) {
+        return res.json(new ApiResponse(400, "Invalid referral code", false));
+      }
+      const referrer = await User.findOne({ referralCode: normalizedCode }).select("_id referralCount rewards referralCode");
       if (!referrer) {
         return res.json(new ApiResponse(400, "Invalid referral code", false));
       }
-      newUserPayload.referredBy = referralCode;
-      // Increment referrer's counters atomically
-      await User.updateOne(
-        { _id: referrer._id },
-        { $inc: { referralCount: 1, rewards: 1 } }
-      );
+      newUserPayload.referredBy = normalizedCode;
+      normalizedCodeUsed = normalizedCode;
+      referrerId = referrer._id;
     }
 
     // Creating the user
     const user = await User.create(newUserPayload);
+
+    // If referred, recompute and set referrer's counts to ensure correctness
+    if (normalizedCodeUsed && referrerId) {
+      const count = await User.countDocuments({ referredBy: normalizedCodeUsed });
+      await User.updateOne(
+        { _id: referrerId },
+        { $set: { referralCount: count, rewards: count } }
+      );
+    }
 
     // checking if the user is created and selecting the required fields
     const createdUser = await User.findById(user._id).select(
@@ -128,6 +141,38 @@ const registerUser = asyncHandler(async (req, res) => {
   } catch (error) {
     console.log("Error in registering the user:", error);
     throw new ApiError(500, "Something went wrong while registering the user");
+  }
+});
+
+// Admin: Recompute referral stats and backfill referral codes for all users
+const recomputeReferralStats = asyncHandler(async (req, res) => {
+  try {
+    // 1) Backfill referralCode where missing
+    const usersWithoutCode = await User.find({ $or: [{ referralCode: { $exists: false } }, { referralCode: null }, { referralCode: "" }] }).select("_id");
+    let backfilled = 0;
+    for (const u of usersWithoutCode) {
+      // trigger pre-save to set referralCode
+      const userDoc = await User.findById(u._id);
+      if (userDoc && !userDoc.referralCode) {
+        await userDoc.save();
+        backfilled += 1;
+      }
+    }
+
+    // 2) Recompute referralCount and rewards for everyone
+    const allUsers = await User.find({}).select("_id referralCode");
+    let updated = 0;
+    for (const u of allUsers) {
+      if (!u.referralCode) continue;
+      const count = await User.countDocuments({ referredBy: u.referralCode });
+      await User.updateOne({ _id: u._id }, { $set: { referralCount: count, rewards: count } });
+      updated += 1;
+    }
+
+    return res.json(new ApiResponse(200, { backfilled, updated }, "Referral stats recomputed successfully"));
+  } catch (error) {
+    console.log("Error recomputing referral stats:", error);
+    throw new ApiError(500, "Failed to recompute referral stats");
   }
 });
 
@@ -189,11 +234,11 @@ const loginUser = asyncHandler (async( req , res ) => {
     .cookie ("refreshToken", refreshToken, options)
     .cookie ("accessToken", accessToken, options)
     .json(
-      new ApiResponse(200, "User logged in successfully", {
+      new ApiResponse(200, {
         user: loggedInUser,
         accessToken,
         refreshToken,
-      })
+      }, "User logged in successfully")
     );
 
   } catch (error) {
@@ -245,5 +290,6 @@ const logoutUser =  asyncHandler ( async (req , res ) => {
   getMe,
     registerUser,
     loginUser,
-    logoutUser
+  logoutUser,
+  recomputeReferralStats
   }

@@ -31,11 +31,11 @@ const createPurchase = asyncHandler(async (req, res) => {
             productId: productId
         });
 
-        if (existingPurchase) {
-            return res.json(
-                new ApiResponse(400, null, "You have already purchased this product")
-            );
-        }
+        // if (existingPurchase) {
+        //     return res.json(
+        //         new ApiResponse(400, null, "You have already purchased this product")
+        //     );
+        // }
 
         // Create purchase with new model structure
         const purchase = await Purchase.create({

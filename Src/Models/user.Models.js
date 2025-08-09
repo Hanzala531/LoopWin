@@ -4,52 +4,52 @@ import jwt from "jsonwebtoken";
 import { nanoid } from "nanoid";
 
 const userSchema = new mongoose.Schema({
-  name: {
+  name : {
     type: String,
     required: true,
-    trim: true,
+    trim: true
   },
-  phone: {
-    type: String,
-    unique: true,
-    trim: true,
-    sparse: true,
+    phone : {
+      type: String,
+      unique: true,
+      trim: true,
+      sparse: true,
+    },
+    status : {
+        type: String,
+        enum: ["admin", "user"],
+        default: "user",
+    },
+    password : {
+      type : String,
+      required: true,
+    },
+    refreshToken:{
+        type : String
+    },
+    
+    // Referral fields
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
+    referredBy: {
+      type: String,
+      default: null
+    },
+    referralCount: {
+      type: Number,
+      default: 0
+    },
+    rewards: {
+      type: Number,
+      default: 0
+    }
   },
-  status: {
-    type: String,
-    enum: ["admin", "user"],
-    default: "user",
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  refreshToken: {
-    type: String,
-  },
-
-  // Referral fields
-  referralCode: {
-    type: String,
-    unique: true,
-    sparse: true,
-  },
-  referredBy: {
-    type: String,
-    default: null, // referral code used during signup
-  },
-  referralCount: {
-    type: Number,
-    default: 0,
-  },
-  rewards: {
-    type: Number,
-    default: 0,
-  },
-},
-{
-  timestamps: true,
-});
+  {
+    timestamps: true,
+  });
   
   
   // Method for hashing password
@@ -58,11 +58,11 @@ const userSchema = new mongoose.Schema({
     this.password = await bcrypt.hash(this.password, 10);
     next();
   });
-
-  // Generate referral code if missing
+  
+  // Generate referral code before save
   userSchema.pre("save", function (next) {
     if (!this.referralCode) {
-      this.referralCode = nanoid(8); // generate 8-char unique code
+      this.referralCode = nanoid(8); // 8-char unique code
     }
     next();
   });
