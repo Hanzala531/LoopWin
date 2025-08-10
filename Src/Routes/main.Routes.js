@@ -3,6 +3,10 @@ import {
     uploadBanner,
     getBanner,
     removeBanner,
+    addWinner,
+    getWinners,
+    updateWinner,
+    deleteWinner,
     getLiveParticipantCounts,
     getMainPageData
 } from "../Controllers/main.Controllers.js";
@@ -20,6 +24,9 @@ router.route("/").get(getMainPageData);
 // Get current banner
 router.route("/banner").get(getBanner);
 
+// Get winners
+router.route("/winners").get(getWinners);
+
 // Get live participant counts
 router.route("/live-counts").get(getLiveParticipantCounts);
 
@@ -27,8 +34,13 @@ router.route("/live-counts").get(getLiveParticipantCounts);
 // All routes below require authentication and admin role
 router.use(verifyJWT, verifyAdmin);
 
-// Simple Banner Management
+// Banner Management
 router.route("/banner").post(upload.single("image"), uploadBanner);
 router.route("/banner").delete(removeBanner);
+
+// Winner Management
+router.route("/winners").post(upload.single("image"), addWinner);
+router.route("/winners/:winnerId").patch(upload.single("image"), updateWinner);
+router.route("/winners/:winnerId").delete(deleteWinner);
 
 export default router;
