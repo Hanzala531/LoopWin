@@ -4,12 +4,14 @@ const winnerSchema = new mongoose.Schema({
     giveawayId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Giveaway",
-        required: true
+        required: true,
+        index: true
     },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        required: true,
+        index: true
     },
     prizeWon: {
         name: {
@@ -31,23 +33,21 @@ const winnerSchema = new mongoose.Schema({
     },
     wonAt: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        index: true
     },
     deliveryStatus: {
         type: String,
         enum: ["pending", "contacted", "shipped", "delivered"],
-        default: "pending"
+        default: "pending",
+        index: true
     },
     contactInfo: {
         phone: {
             type: String,
             default: null
         },
-        email: {
-            type: String,
-            default: null
-        },
-        address: {
+        profileImage: {
             type: String,
             default: null
         }
@@ -56,6 +56,15 @@ const winnerSchema = new mongoose.Schema({
         type: String,
         default: null,
         trim: true
+    },
+    lastUpdatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+    },
+    lastUpdatedAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true
@@ -63,5 +72,8 @@ const winnerSchema = new mongoose.Schema({
 
 // Index for faster queries
 winnerSchema.index({ giveawayId: 1, userId: 1 }, { unique: true });
+winnerSchema.index({ giveawayId: 1, wonAt: -1 });
+winnerSchema.index({ userId: 1, wonAt: -1 });
+winnerSchema.index({ deliveryStatus: 1, wonAt: -1 });
 
 export const Winner = mongoose.model("Winner", winnerSchema);

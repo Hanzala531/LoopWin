@@ -14,6 +14,7 @@ const giveawaySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true
     },
 
     prizes: [
@@ -40,12 +41,13 @@ const giveawaySchema = new mongoose.Schema(
       type: String,
       enum: ["draft", "active", "completed", "cancelled"],
       default: "draft",
+      index: true
     },
 
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
-    drawDate: { type: Date, required: true },
-    drawCompleted: { type: Boolean, default: false },
+    startDate: { type: Date, required: true, index: true },
+    endDate: { type: Date, required: true, index: true },
+    drawDate: { type: Date, required: true, index: true },
+    drawCompleted: { type: Boolean, default: false, index: true },
 
     winners: [
       {
@@ -80,5 +82,10 @@ giveawaySchema.pre("save", function (next) {
   }
   next();
 });
+
+// Compound indexes for optimized queries
+giveawaySchema.index({ status: 1, startDate: 1, endDate: 1 });
+giveawaySchema.index({ drawDate: 1, drawCompleted: 1 });
+giveawaySchema.index({ status: 1, createdAt: -1 });
 
 export const Giveaway = mongoose.model("Giveaway", giveawaySchema);

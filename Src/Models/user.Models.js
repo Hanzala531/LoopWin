@@ -14,11 +14,13 @@ const userSchema = new mongoose.Schema({
       unique: true,
       trim: true,
       sparse: true,
+      index: true
     },
     status : {
         type: String,
         enum: ["admin", "user"],
         default: "user",
+        index: true
     },
     password : {
       type : String,
@@ -32,11 +34,13 @@ const userSchema = new mongoose.Schema({
     referralCode: {
       type: String,
       unique: true,
-      sparse: true
+      sparse: true,
+      index: true
     },
     referredBy: {
       type: String,
-      default: null
+      default: null,
+      index: true
     },
     referralCount: {
       type: Number,

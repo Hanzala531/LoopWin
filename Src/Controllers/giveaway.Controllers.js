@@ -54,7 +54,6 @@ const createGiveaway = asyncHandler(async (req, res) => {
     minAmountSpent: eligibilityCriteria?.minAmountSpent || 0,
     purchaseStartDate: eligibilityCriteria?.purchaseStartDate || null,
     purchaseEndDate: eligibilityCriteria?.purchaseEndDate || null,
-    eligibleProducts: eligibilityCriteria?.eligibleProducts || []
   };
 
   // 5️⃣ Giveaway create
@@ -76,7 +75,7 @@ const createGiveaway = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, giveaway, "Giveaway created successfully"));
 });
 
-export default createGiveaway;
+
 
 
 // Get all giveaways with filters and pagination
@@ -899,6 +898,162 @@ const getEligibleUsersForGiveaway = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Something went wrong while retrieving eligible users");
     }
 });
+ 
+// Update giveaway winner details for admin
+const updateGiveawayWinner = asyncHandler(async (req, res) => {
+    try {
+        const { winnerId } = req.params;
+        const { 
+            deliveryStatus, 
+            contactInfo, 
+            notes, 
+            prizeWon,
+            winnerImageUrl 
+        } = req.body;
+
+        // 1️⃣ Validate winner ID
+        if (!mongoose.Types.ObjectId.isValid(winnerId)) {
+            return res.json(
+                new ApiResponse(400, null, "Invalid winner ID")
+            );
+        }
+
+        // 2️⃣ Find the winner
+        const winner = await Winner.findById(winnerId)
+            .populate('userId', 'name phone')
+            .populate('giveawayId', 'title');
+
+        if (!winner) {
+            return res.json(
+                new ApiResponse(404, null, "Winner not found")
+            );
+        }
+
+        // 3️⃣ Handle file uploads
+        let prizeImageUrl = null;
+        let winnerProfileImageUrl = null;
+
+        if (req.files) {
+            if (req.files.prizeImage && req.files.prizeImage[0]) {
+                const prizeImageUpload = await uploadOnCloudinary(req.files.prizeImage[0].path);
+                if (prizeImageUpload) {
+                    prizeImageUrl = prizeImageUpload.secure_url;
+                } else {
+                    return res.json(
+                        new ApiResponse(400, null, "Failed to upload prize image")
+                    );
+                }
+            }
+
+            if (req.files.winnerImage && req.files.winnerImage[0]) {
+                const winnerImageUpload = await uploadOnCloudinary(req.files.winnerImage[0].path);
+                if (winnerImageUpload) {
+                    winnerProfileImageUrl = winnerImageUpload.secure_url;
+                } else {
+                    return res.json(
+                        new ApiResponse(400, null, "Failed to upload winner image")
+                    );
+                }
+            }
+        }
+
+        // 4️⃣ Update delivery status
+        if (deliveryStatus) {
+            const validStatuses = ['pending', 'contacted', 'shipped', 'delivered'];
+            if (!validStatuses.includes(deliveryStatus)) {
+                return res.json(
+                    new ApiResponse(400, null, `Invalid delivery status. Must be one of: ${validStatuses.join(', ')}`)
+                );
+            }
+            winner.deliveryStatus = deliveryStatus;
+        }
+
+        // 5️⃣ Update contact info
+        if (contactInfo) {
+            winner.contactInfo = { 
+                ...winner.contactInfo?.toObject?.() || {}, 
+                ...contactInfo 
+            };
+        }
+
+        // 6️⃣ Update notes
+        if (notes !== undefined) {
+            winner.notes = notes;
+        }
+
+        // 7️⃣ Update prize details
+        if (prizeWon) {
+            const updatedPrize = { ...winner.prizeWon?.toObject?.() || {} };
+            
+            if (prizeWon.name) updatedPrize.name = prizeWon.name;
+            if (prizeWon.description) updatedPrize.description = prizeWon.description;
+            if (prizeWon.value !== undefined) updatedPrize.value = prizeWon.value;
+            
+            if (prizeImageUrl) {
+                updatedPrize.image = prizeImageUrl;
+            } else if (prizeWon.image) {
+                updatedPrize.image = prizeWon.image;
+            }
+
+            winner.prizeWon = updatedPrize;
+        } else if (prizeImageUrl) {
+            winner.prizeWon.image = prizeImageUrl;
+        }
+
+        // 8️⃣ Update winner image
+        if (winnerProfileImageUrl) {
+            winner.contactInfo = winner.contactInfo || {};
+            winner.contactInfo.profileImage = winnerProfileImageUrl;
+        } else if (winnerImageUrl) {
+            winner.contactInfo = winner.contactInfo || {};
+            winner.contactInfo.profileImage = winnerImageUrl;
+        }
+
+        // 9️⃣ Update metadata
+        winner.lastUpdatedBy = req.user._id;
+        winner.lastUpdatedAt = new Date();
+
+        // 🔟 Save changes
+        await winner.save();
+
+        // 1️⃣1️⃣ Re-fetch updated winner
+        const updatedWinner = await Winner.findById(winnerId)
+            .populate('userId', 'name phone')
+            .populate('giveawayId', 'title')
+            .populate('lastUpdatedBy', 'name');
+
+        // Defensive check for giveaway title
+        const giveawayTitle = updatedWinner?.giveawayId?.title || "N/A";
+
+        // 1️⃣2️⃣ Prepare response
+        const responseData = {
+            winner: updatedWinner,
+            updates: {
+                deliveryStatus: deliveryStatus || "No change",
+                contactInfo: contactInfo ? "Updated" : "No change",
+                notes: notes !== undefined ? "Updated" : "No change",
+                prizeDetails: prizeWon ? "Updated" : "No change",
+                prizeImage: prizeImageUrl ? "New image uploaded" : "No change",
+                winnerImage: winnerProfileImageUrl || winnerImageUrl ? "New image uploaded" : "No change"
+            },
+            metadata: {
+                updatedBy: req.user.name,
+                updatedAt: new Date().toISOString(),
+                giveawayTitle
+            }
+        };
+
+        return res.json(
+            new ApiResponse(200, responseData, "Winner details updated successfully")
+        );
+
+    } catch (error) {
+        console.error("Update giveaway winner error:", error);
+        throw new ApiError(500, "Something went wrong while updating winner details");
+    }
+});
+
+
 
 // ==================== PUBLIC ENDPOINTS ====================
 
@@ -1111,6 +1266,7 @@ export {
     replaceWinner,
     updateWinnerPrize,
     removeWinner,
+    updateGiveawayWinner,
     
     // Manual Winner Selection (Admin)
     selectManualWinner,

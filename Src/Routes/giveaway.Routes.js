@@ -14,7 +14,8 @@ import {
     getActiveGiveaways,
     selectManualWinner,
     getEligibleUsersForGiveaway,
-    getGiveawayPrizeDetails
+    getGiveawayPrizeDetails,
+    updateGiveawayWinner
 } from "../Controllers/giveaway.Controllers.js";
 import { verifyJWT } from "../Middlewares/Auth.middleware.js";
 import { verifyAdmin } from "../Middlewares/Role.middlewares.js";
@@ -44,6 +45,13 @@ router.route("/winners/:winnerId").patch(updateWinner);
 router.route("/winners/:winnerId/replace").post(replaceWinner);
 router.route("/winners/:winnerId/prize").patch(updateWinnerPrize);
 router.route("/winners/:winnerId/remove").delete(removeWinner);
+router.route("/winners/:winnerId/update").patch(
+    upload.fields([
+        { name: 'prizeImage', maxCount: 1 },
+        { name: 'winnerImage', maxCount: 1 }
+    ]),
+    updateGiveawayWinner
+);
 
 // Manual Winner Selection (Admin)
 router.route("/:giveawayId/select-winner").post(selectManualWinner);

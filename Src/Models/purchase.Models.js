@@ -18,12 +18,14 @@ const purchaseSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true
+    required: true,
+    index: true
   },
   productId : {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Products",
-    required: true
+    required: true,
+    index: true
   },
   paymentScreenshot : {
     type : String
@@ -35,12 +37,14 @@ const purchaseSchema = new mongoose.Schema({
   userPayment: {
     type: String,
     enum: ["pending", "in-progress", "payed"],
-    default: "pending"
+    default: "pending",
+    index: true
   },
   paymentApproval: {
     type: String,
     enum: ["pending", "in-progress", "completed"],
-    default: "pending"
+    default: "pending",
+    index: true
   }
 }, { timestamps: true });
 
@@ -62,5 +66,12 @@ purchaseSchema.pre("save", async function (next) {
     next();
   }
 });
+
+// Compound indexes for optimized queries
+purchaseSchema.index({ userId: 1, paymentApproval: 1 });
+purchaseSchema.index({ userId: 1, userPayment: 1 });
+purchaseSchema.index({ productId: 1, paymentApproval: 1 });
+purchaseSchema.index({ createdAt: -1 });
+purchaseSchema.index({ paymentApproval: 1, userPayment: 1 });
 
 export const Purchase =  mongoose.model("Purchase", purchaseSchema);

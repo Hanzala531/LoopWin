@@ -5,11 +5,13 @@ const productSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        required: true,
+        index: true
     },
     name: {
         type: String,
-        required: true
+        required: true,
+        index: true
     },
     headline: {
         type: String,
@@ -26,7 +28,8 @@ const productSchema = new mongoose.Schema({
     price: {
         type: Number,
         required: true,
-        default: 0
+        default: 0,
+        index: true
     },
     productLink : {
         type : String,
@@ -35,5 +38,10 @@ const productSchema = new mongoose.Schema({
 }, {
     timestamps: true,
 });
+
+// Compound indexes for optimized queries
+productSchema.index({ createdBy: 1, createdAt: -1 });
+productSchema.index({ name: "text", description: "text" }); // Text search
+productSchema.index({ price: 1, createdAt: -1 });
 
 export const Products = mongoose.model("Products", productSchema);
