@@ -63,39 +63,17 @@ const removeBanner = asyncHandler(async (req, res) => {
 
 // Live Participant Counts
 const getLiveParticipantCounts = asyncHandler(async (req, res) => {
-    // Find the current active giveaway
-    const activeGiveaway = await Giveaway.findOne({
-        status: 'active',
-        startDate: { $lte: new Date() },
-        endDate: { $gte: new Date() }
-    });
-
-    if (!activeGiveaway) {
+    const main = await Main.findOne()
+        .populate('participantCounts.giveawayId', 'title startDate endDate');
+    
+    if (!main) {
         return res.status(200).json(
-            new ApiResponse(200, null, "No active giveaway found")
+            new ApiResponse(200, [], "No participant counts available")
         );
     }
 
-    // Count participants for the active giveaway
-    const participantCount = await Purchase.countDocuments({
-        giveawayId: activeGiveaway._id,
-        purchaseDate: {
-            $gte: activeGiveaway.startDate,
-            $lte: activeGiveaway.endDate
-        }
-    });
-
-    const responseData = {
-        giveawayId: activeGiveaway._id,
-        giveawayTitle: activeGiveaway.title,
-        currentParticipants: participantCount,
-        giveawayStartDate: activeGiveaway.startDate,
-        giveawayEndDate: activeGiveaway.endDate,
-        lastUpdated: new Date()
-    };
-
     return res.status(200).json(
-        new ApiResponse(200, responseData, "Live participant count retrieved successfully")
+        new ApiResponse(200, main.participantCounts, "Live participant counts retrieved successfully")
     );
 });
 
@@ -113,7 +91,7 @@ const getMainPageData = asyncHandler(async (req, res) => {
 
     // Update participant counts for active giveaways
     const activeGiveaways = await Giveaway.find({
-        status: 'active',
+        isActive: true,
         startDate: { $lte: new Date() },
         endDate: { $gte: new Date() }
     });
