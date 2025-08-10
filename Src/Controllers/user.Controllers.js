@@ -33,7 +33,7 @@ const generateAccessAndRefreshTokens = async (userid) => {
 // Get all users for admin
 const getAllUsers = asyncHandler (async (req , res ) =>{
     try {
-    const users = await User.find({}).select("-password -refreshToken");
+    const users = await User.find({}).select("-password -refreshToken").sort({ createdAt: -1 });
     if (!users) {
       return res.json(new ApiResponse(404, "No users found", false));
     }
