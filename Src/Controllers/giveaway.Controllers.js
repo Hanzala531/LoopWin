@@ -599,6 +599,13 @@ const replaceWinner = asyncHandler(async (req, res) => {
 
         const giveaway = oldWinner.giveawayId;
 
+        // Check if the associated giveaway still exists
+        if (!giveaway) {
+            return res.json(
+                new ApiResponse(400, null, "Cannot replace winner: Associated giveaway no longer exists")
+            );
+        }
+
         // Get eligible participants who haven't won yet
         const allEligibleUsers = await getEligibleParticipants(giveaway);
         const existingWinnerIds = await Winner.find({ giveawayId: giveaway._id })
@@ -929,6 +936,20 @@ const updateGiveawayWinner = asyncHandler(async (req, res) => {
             );
         }
 
+        // Check if the associated giveaway still exists
+        if (!winner.giveawayId) {
+            return res.json(
+                new ApiResponse(400, null, "Cannot update winner: Associated giveaway no longer exists")
+            );
+        }
+
+        // Additional check to ensure giveaway is properly populated and has a title
+        if (!winner.giveawayId.title) {
+            return res.json(
+                new ApiResponse(400, null, "Cannot update winner: Associated giveaway data is incomplete or corrupted")
+            );
+        }
+
         // 3️⃣ Handle file uploads
         let prizeImageUrl = null;
         let winnerProfileImageUrl = null;
@@ -1022,8 +1043,27 @@ const updateGiveawayWinner = asyncHandler(async (req, res) => {
             .populate('giveawayId', 'title')
             .populate('lastUpdatedBy', 'name');
 
-        // Defensive check for giveaway title
-        const giveawayTitle = updatedWinner?.giveawayId?.title || "N/A";
+        // Check if winner still exists after update
+        if (!updatedWinner) {
+            console.error("Winner not found after update, winnerId:", winnerId);
+            return res.json(
+                new ApiResponse(404, null, "Winner not found after update")
+            );
+        }
+
+        // Defensive check for giveaway title with detailed logging
+        let giveawayTitle = "N/A";
+        try {
+            if (updatedWinner.giveawayId && updatedWinner.giveawayId.title) {
+                giveawayTitle = updatedWinner.giveawayId.title;
+            } else {
+                console.warn("Giveaway title missing for winner:", winnerId, "giveawayId:", updatedWinner.giveawayId);
+                giveawayTitle = "Giveaway Title Unavailable";
+            }
+        } catch (titleError) {
+            console.error("Error accessing giveaway title:", titleError);
+            giveawayTitle = "Error Retrieving Title";
+        }
 
         // 1️⃣2️⃣ Prepare response
         const responseData = {
@@ -1049,6 +1089,11 @@ const updateGiveawayWinner = asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error("Update giveaway winner error:", error);
+        console.error("Error details:", {
+            winnerId: req.params.winnerId,
+            errorMessage: error.message,
+            errorStack: error.stack
+        });
         throw new ApiError(500, "Something went wrong while updating winner details");
     }
 });
@@ -1108,13 +1153,13 @@ const removeWinner = asyncHandler(async (req, res) => {
         const removedWinnerInfo = {
             winnerId: winner._id,
             user: {
-                id: winner.userId._id,
-                name: winner.userId.name,
-                phone: winner.userId.phone
+                id: winner.userId?._id || null,
+                name: winner.userId?.name || "Unknown",
+                phone: winner.userId?.phone || "Unknown"
             },
             giveaway: {
-                id: winner.giveawayId._id,
-                title: winner.giveawayId.title
+                id: winner.giveawayId?._id || null,
+                title: winner.giveawayId?.title || "Deleted Giveaway"
             },
             prizeWon: winner.prizeWon,
             wonAt: winner.wonAt,
