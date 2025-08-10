@@ -125,7 +125,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if (referrerId) {
       await User.updateOne(
         { _id: referrerId },
-        { $inc: { referralCount: 1, rewards: 1 } }
+        { $inc: { referralCount: 1, rewards: 5 } }
       );
     }
 
