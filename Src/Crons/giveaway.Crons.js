@@ -1,6 +1,7 @@
 // src/cron/giveaway.cron.js
 import cron from "node-cron";
 import { Giveaway } from "../Models/giveaway.Models.js";
+import { getEligibleParticipants } from "../Controllers/giveaway.Controllers.js";
 
 // Yeh function cron jobs ko initialize karega
 export function initGiveawayCron() {
@@ -51,6 +52,37 @@ export function initGiveawayCron() {
 
 // Winner selection logic ko separate rakha
 async function runDrawLogic(giveaway) {
-  // 🔹 Yahan tum apna admin winner selection code lagaoge
+  const eligibleUsers = await getEligibleParticipants(giveaway);
+
+  if (eligibleUsers.length === 0) {
+    console.log(`No eligible participants for giveaway: ${giveaway.title}`);
+    return;
+  }
+
+  const winners = [];
+
+  for (const prize of giveaway.prizes) {
+    for (let i = 0; i < prize.quantity; i++) {
+      const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
+      const selectedUser = eligibleUsers[randomIndex];
+
+      const winner = await Winner.create({
+        giveawayId: giveaway._id,
+        userId: selectedUser._id,
+        prizeWon: {
+          name: prize.name,
+          description: prize.description,
+          value: prize.value,
+          image: prize.image
+        },
+        contactInfo: {
+          phone: selectedUser.phone || null
+        }
+      });
+
+      winners.push(winner);
+    }
+  }
+
   console.log(`🏆 Winners selected for: ${giveaway.title}`);
 }

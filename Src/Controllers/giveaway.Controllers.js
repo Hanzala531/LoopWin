@@ -366,101 +366,16 @@ const runGiveawayDraw = asyncHandler(async (req, res) => {
 
 // Helper function to get eligible participants
 const getEligibleParticipants = async (giveaway) => {
-    try {
-        const criteria = giveaway.eligibilityCriteria;
-        
-        // Base query for users
-        let userQuery = { status: 'user' };
-        
-        // Get user IDs based on purchase criteria
-        let purchaseFilter = {};
-        
-        // Filter by purchase approval status
-        purchaseFilter.paymentApproval = 'completed';
-        purchaseFilter.userPayment = 'payed';
-        
-        // Filter by purchase date range if specified
-        if (criteria.purchaseStartDate || criteria.purchaseEndDate) {
-            purchaseFilter.createdAt = {};
-            if (criteria.purchaseStartDate) {
-                purchaseFilter.createdAt.$gte = criteria.purchaseStartDate;
-            }
-            if (criteria.purchaseEndDate) {
-                purchaseFilter.createdAt.$lte = criteria.purchaseEndDate;
-            }
-        }
-        
-        // Filter by eligible products if specified
-        if (criteria.eligibleProducts && criteria.eligibleProducts.length > 0) {
-            purchaseFilter.productId = { $in: criteria.eligibleProducts };
-        }
-        
-        // Aggregate to get users who meet purchase criteria
-        const aggregationPipeline = [
-            { $match: purchaseFilter },
-            {
-                $group: {
-                    _id: '$userId',
-                    purchaseCount: { $sum: 1 },
-                    totalSpent: { $sum: '$productId.price' }
-                }
-            },
-            {
-                $match: {
-                    purchaseCount: { $gte: criteria.minPurchases || 1 }
-                }
-            }
-        ];
-        
-        // If we need to check total amount spent, we need to populate product prices
-        if (criteria.minAmountSpent > 0) {
-            // We'll need to calculate this differently since we need product prices
-            const purchases = await Purchase.find(purchaseFilter)
-                .populate('productId', 'price')
-                .populate('userId', 'name phone status');
-            
-            const userPurchaseStats = {};
-            
-            purchases.forEach(purchase => {
-                const userId = purchase.userId._id.toString();
-                if (!userPurchaseStats[userId]) {
-                    userPurchaseStats[userId] = {
-                        user: purchase.userId,
-                        purchaseCount: 0,
-                        totalSpent: 0
-                    };
-                }
-                userPurchaseStats[userId].purchaseCount++;
-                userPurchaseStats[userId].totalSpent += purchase.productId.price || 0;
-            });
-            
-            // Filter users based on criteria
-            const eligibleUsers = Object.values(userPurchaseStats)
-                .filter(stats => {
-                    return stats.user.status === 'user' &&
-                           stats.purchaseCount >= (criteria.minPurchases || 1) &&
-                           stats.totalSpent >= (criteria.minAmountSpent || 0);
-                })
-                .map(stats => stats.user);
-            
-            return eligibleUsers;
-        } else {
-            // Simpler case without amount spent requirement
-            const purchaseResults = await Purchase.aggregate(aggregationPipeline);
-            const eligibleUserIds = purchaseResults.map(result => result._id);
-            
-            const eligibleUsers = await User.find({
-                _id: { $in: eligibleUserIds },
-                status: 'user'
-            });
-            
-            return eligibleUsers;
-        }
-    } catch (error) {
-        console.error("Get eligible participants error:", error);
-        throw new ApiError(500, "Something went wrong");
-;
-    }
+  try {
+    const criteria = giveaway.eligibilityCriteria;
+
+    const eligibleUsers = await User.find({ status: 'user' });
+
+    return eligibleUsers;
+  } catch (error) {
+    console.error("Get eligible participants error:", error);
+    throw new ApiError(500, "Something went wrong");
+  }
 };
 
 // Get winners for a specific giveaway
