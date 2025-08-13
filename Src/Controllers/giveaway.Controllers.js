@@ -1236,5 +1236,6 @@ export {
     getGiveawayPrizeDetails,
     
     // Public
-    getActiveGiveaways
+    getActiveGiveaways,
+    getEligibleParticipants
 };
