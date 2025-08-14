@@ -27,13 +27,15 @@ const router = Router();
 // Get active giveaways (no authentication required)
 router.route("/active").get(getActiveGiveaways);
 
+
+router.route("/").get(getAllGiveaways);
+
 // ==================== ADMIN ONLY ROUTES ====================
 // All routes below require authentication and admin role
 router.use(verifyJWT, verifyAdmin);
 
 // Giveaway Management
 router.route("/create").post(upload.single("image"), createGiveaway);
-router.route("/").get(getAllGiveaways);
 router.route("/:giveawayId").get(getGiveawayById);
 router.route("/:giveawayId/status").patch(updateGiveawayStatus);
 router.route("/:giveawayId").delete(deleteGiveaway);
