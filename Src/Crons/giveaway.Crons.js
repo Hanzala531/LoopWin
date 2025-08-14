@@ -1,7 +1,9 @@
 // src/cron/giveaway.cron.js
 import cron from "node-cron";
 import { Giveaway } from "../Models/giveaway.Models.js";
-import { getEligibleParticipants } from "../Controllers/giveaway.Controllers.js";
+// import { getEligibleParticipants } from "../Controllers/giveaway.Controllers.js";
+// Only import Winner if you ever need to use it manually:
+import { Winner } from "../Models/winner.Models.js";
 
 // Yeh function cron jobs ko initialize karega
 export function initGiveawayCron() {
@@ -28,21 +30,7 @@ export function initGiveawayCron() {
         console.log(`✅ ${completed.modifiedCount} giveaways completed.`);
       }
 
-      // 3️⃣ Completed → Draw
-      const toDraw = await Giveaway.find({
-        status: "completed",
-        drawDate: { $lte: now },
-        drawCompleted: false
-      });
-
-      for (let giveaway of toDraw) {
-        console.log(`🎯 Running draw for: ${giveaway.title}`);
-
-        await runDrawLogic(giveaway); // Winner selection logic
-
-        giveaway.drawCompleted = true;
-        await giveaway.save();
-      }
+      // Draw is now manual only. No automatic draw in cron job.
 
     } catch (error) {
       console.error("❌ Error in giveaway cron job:", error);
@@ -50,39 +38,5 @@ export function initGiveawayCron() {
   });
 }
 
-// Winner selection logic ko separate rakha
-async function runDrawLogic(giveaway) {
-  const eligibleUsers = await getEligibleParticipants(giveaway);
 
-  if (eligibleUsers.length === 0) {
-    console.log(`No eligible participants for giveaway: ${giveaway.title}`);
-    return;
-  }
-
-  const winners = [];
-
-  for (const prize of giveaway.prizes) {
-    for (let i = 0; i < prize.quantity; i++) {
-      const randomIndex = Math.floor(Math.random() * eligibleUsers.length);
-      const selectedUser = eligibleUsers[randomIndex];
-
-      const winner = await Winner.create({
-        giveawayId: giveaway._id,
-        userId: selectedUser._id,
-        prizeWon: {
-          name: prize.name,
-          description: prize.description,
-          value: prize.value,
-          image: prize.image
-        },
-        contactInfo: {
-          phone: selectedUser.phone || null
-        }
-      });
-
-      winners.push(winner);
-    }
-  }
-
-  console.log(`🏆 Winners selected for: ${giveaway.title}`);
-}
+// Winner selection logic has been removed from cron job. Draw must be triggered manually.

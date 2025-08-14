@@ -284,13 +284,30 @@ const logoutUser =  asyncHandler ( async (req , res ) => {
 
   });
 
+  // get data related to  referals for admin
+  const getReferals = asyncHandler(async(req,res)=>{
+    try {
+      // get find all the user documents 
+      // filter out name of user , referal count and refered by for all documents 
+      const referals = await User.find({}, "name referralCount referredBy")
+        .populate({
+          path: 'referredBy',
+          select: 'name',
+        });
+      return res.status(200).json(new ApiResponse(200, referals, "Referral data fetched successfully"));
+    } catch (error) {
+      console.error("Error fetching referral data:", error);
+      return res.status(500).json(new ApiResponse(500, null, "Failed to fetch referral data"));
+    }
+  })
 
   export {
     getAllUsers,
     getUserById,
-  getMe,
+    getMe,
     registerUser,
     loginUser,
-  logoutUser,
-  recomputeReferralStats
+    logoutUser,
+    recomputeReferralStats,
+    getReferals
   }

@@ -28,10 +28,10 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     // Check if Cloudinary credentials are available
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      console.error("Missing Cloudinary credentials:");
-      console.error("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME || "MISSING");
-      console.error("API_KEY:", process.env.CLOUDINARY_API_KEY || "MISSING");
-      console.error("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "SET" : "MISSING");
+      // console.error("Missing Cloudinary credentials:");
+      // console.error("CLOUD_NAME:", process.env.CLOUDINARY_CLOUD_NAME || "MISSING");
+      // console.error("API_KEY:", process.env.CLOUDINARY_API_KEY || "MISSING");
+      // console.error("API_SECRET:", process.env.CLOUDINARY_API_SECRET ? "SET" : "MISSING");
       throw new Error("Cloudinary credentials are missing. Check your environment variables");
     }
 

@@ -9,7 +9,9 @@ import {
     registerUser,
     loginUser,
     logoutUser,
-    recomputeReferralStats
+    recomputeReferralStats,
+        getReferals
+
 } from '../Controllers/user.Controllers.js'
 
 const userRouter = express.Router()
@@ -31,7 +33,8 @@ userRouter.get("/me", requestLogger, verifyJWT, getMe);
 userRouter.get("/", requestLogger, verifyJWT, verifyAdmin, getAllUsers);
 
 // Admin: Recompute referral stats and backfill missing codes
-userRouter.post("/admin/recompute-referrals", requestLogger, verifyJWT, verifyAdmin, recomputeReferralStats);
+userRouter.get("/admin/recompute-referrals", requestLogger, verifyJWT, verifyAdmin,     getReferals
+);
 
 // Route to get user by ID
 userRouter.get("/:id", requestLogger, verifyJWT, getUserById);
