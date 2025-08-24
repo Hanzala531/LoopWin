@@ -60,6 +60,7 @@ app.get('/', (req, res) => {
         '/api/v1/products',
         '/api/v1/purchases',
         '/api/v1/giveaways',
+        '/api/v1/Withdraw',
         '/api/v1/main'
       ]
     }
@@ -97,6 +98,9 @@ app.use("/api/v1/giveaways", giveawayRouter);
 // creating main api (banners, live counts, etc.)
 import mainRouter from "./Routes/main.Routes.js";
 app.use("/api/v1/main", mainRouter);
+
+import router from "./Routes/withdraw.routes.js";
+app.use('/api/v1/withdraw' , router)
 
 
 export { app };
